@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { AppError } from '../utils/AppError';
-import { prisma } from '../prisma';
+import { User } from '../../modules/user/model';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-key-change-me';
 
@@ -43,10 +43,7 @@ export const authenticate = async (
     try {
         const decoded = jwt.verify(token, JWT_SECRET) as JwtPayload;
 
-        const user = await prisma.user.findUnique({
-            where: { id: decoded.id },
-            select: { id: true, email: true },
-        });
+        const user = await User.findById(decoded.id).select('email');
 
         if (!user) {
             return next(
@@ -54,9 +51,13 @@ export const authenticate = async (
             );
         }
 
-        req.user = user;
+        req.user = {
+            id: user._id.toString(),
+            email: user.email,
+        };
         next();
     } catch (error) {
         return next(new AppError('Not authorized to access this route', 401));
     }
 };
+

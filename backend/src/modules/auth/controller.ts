@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { catchAsync } from '../../common/utils/catchAsync';
-import { register, login, getMe } from './auth.service';
+import { register, login, getMe } from './service';
 
 export const registerHandler = catchAsync(async (req: Request, res: Response) => {
     const { user, token } = await register(req.body);

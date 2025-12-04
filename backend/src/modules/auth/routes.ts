@@ -1,13 +1,13 @@
 import { Router } from 'express';
 import { validateResource } from '../../common/middlewares/validateResource';
 import { authenticate } from '../../common/middlewares/authenticate';
-import { registerSchema, loginSchema } from './auth.schema';
+import { registerSchema, loginSchema } from './schema';
 import {
     registerHandler,
     loginHandler,
     logoutHandler,
     getMeHandler,
-} from './auth.controller';
+} from './controller';
 
 const router = Router();
 
