@@ -1,0 +1,219 @@
+// This is your Prisma schema file for Nova RFP Platform
+// Database: MongoDB
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+// User model
+model User {
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  email         String    @unique
+  passwordHash  String
+  name          String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  // Relations
+  spaces        Space[]
+  emails        Email[]
+  audits        Audit[]
+  
+  // Gmail integration
+  gmail         Gmail?
+}
+
+model Gmail {
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId        String    @unique @db.ObjectId
+  googleId      String
+  accessToken   String
+  refreshToken  String
+  scopes        String[]
+  connectedAt   DateTime  @default(now())
+  
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// Vendor model
+model Vendor {
+  id              String      @id @default(auto()) @map("_id") @db.ObjectId
+  name            String
+  companyName     String
+  emails          String[]
+  phones          String[]
+  addresses       Address[]
+  categories      String[]
+  notes           String?
+  proposalsCount  Int         @default(0)
+  acceptedCount   Int         @default(0)
+  rejectedCount   Int         @default(0)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  
+  // Relations
+  proposals       Proposal[]
+}
+
+model Address {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  vendorId    String    @db.ObjectId
+  line1       String?
+  line2       String?
+  city        String?
+  state       String?
+  country     String?
+  postalCode  String?
+  
+  vendor      Vendor    @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+}
+
+// Space/RFP model
+model Space {
+  id              String      @id @default(auto()) @map("_id") @db.ObjectId
+  ownerId         String      @db.ObjectId
+  name            String
+  categories      String[]
+  description     String?
+  requirements    String?
+  structuredData  Json?
+  emailTemplate   String?
+  status          SpaceStatus @default(DRAFT)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  
+  // Relations
+  owner           User        @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  emails          Email[]
+  proposals       Proposal[]
+  audits          Audit[]
+}
+
+enum SpaceStatus {
+  DRAFT
+  SENT
+  EVALUATING
+  CLOSED
+}
+
+// Email model
+model Email {
+  id              String      @id @default(auto()) @map("_id") @db.ObjectId
+  userId          String      @db.ObjectId
+  spaceId         String?     @db.ObjectId
+  from            EmailAddress
+  to              EmailAddress[]
+  cc              EmailAddress[]
+  subject         String?
+  bodyPlain       String?
+  bodyHtml        String?
+  attachments     Attachment[]
+  messageId       String?
+  inReplyTo       String?
+  references      String[]
+  threadId        String?
+  rawHeaders      Json?
+  direction       EmailDirection
+  provider        EmailProvider
+  receivedAt      DateTime?
+  processed       Boolean     @default(false)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  
+  // Relations
+  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  space           Space?      @relation(fields: [spaceId], references: [id], onDelete: SetNull)
+  proposals       Proposal[]
+}
+
+type EmailAddress {
+  name    String?
+  email   String
+}
+
+type Attachment {
+  filename    String
+  mimeType    String
+  size        Int
+  storagePath String
+}
+
+enum EmailDirection {
+  INBOUND
+  OUTBOUND
+}
+
+enum EmailProvider {
+  GMAIL
+  IMAP
+  MANUAL
+}
+
+// Proposal model
+model Proposal {
+  id              String        @id @default(auto()) @map("_id") @db.ObjectId
+  spaceId         String        @db.ObjectId
+  vendorId        String?       @db.ObjectId
+  sourceEmailId   String        @db.ObjectId
+  rawText         String
+  extracted       ProposalData
+  attachments     Attachment[]
+  status          ProposalStatus @default(NEW)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  // Relations
+  space           Space         @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  vendor          Vendor?       @relation(fields: [vendorId], references: [id], onDelete: SetNull)
+  sourceEmail     Email         @relation(fields: [sourceEmailId], references: [id], onDelete: Cascade)
+}
+
+type ProposalData {
+  prices              Price[]?
+  terms               String?
+  delivery            String?
+  validity            String?
+  completenessScore   Float?
+  otherFields         Json?
+}
+
+type Price {
+  item      String?
+  price     Float
+  currency  String?
+}
+
+enum ProposalStatus {
+  NEW
+  PARSED
+  NEED_REVIEW
+  ACCEPTED
+  REJECTED
+}
+
+// Audit model
+model Audit {
+  id        String      @id @default(auto()) @map("_id") @db.ObjectId
+  spaceId   String?     @db.ObjectId
+  userId    String?     @db.ObjectId
+  type      AuditType
+  payload   Json
+  createdAt DateTime    @default(now())
+  
+  // Relations
+  space     Space?      @relation(fields: [spaceId], references: [id], onDelete: SetNull)
+  user      User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+}
+
+enum AuditType {
+  SEND_EMAIL
+  INBOUND_EMAIL
+  PARSE
+  MAP_VENDOR
+  RECOMMENDATION
+}
