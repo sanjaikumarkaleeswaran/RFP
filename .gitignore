@@ -1,0 +1,14 @@
+node_modules
+
+.env
+
+PROJECT_SPEC.md
+USER_STORIES.md
+
+# Frontend
+
+/frontend/node_modules
+
+# Backend
+
+/backend/node_modules
