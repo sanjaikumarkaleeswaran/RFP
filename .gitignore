@@ -1,0 +1,18 @@
+node_modules
+
+.env
+
+PROJECT_SPEC.md
+USER_STORIES.md
+
+# Frontend
+
+/frontend/node_modules
+/frontend/dist
+/frontend/coverage
+
+
+
+# Backend
+
+/backend/node_modules
