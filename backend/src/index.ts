@@ -23,6 +23,18 @@ mongoose.connect(MONGO_URI)
             console.error('⚠️  Gmail webhook service failed to initialize:', error);
         }
 
+        // DISABLED: Gmail watch service (Polling) - Using webhooks instead for real-time notifications
+        // Uncomment this only if you need fallback polling when Pub/Sub is not configured
+        /*
+        try {
+            const { gmailWatchService } = await import('./common/services/gmail-watch.service');
+            await gmailWatchService.startWatchingAllUsers(30); // Check every 30 seconds
+            console.log('✅ Gmail watch service (polling) initialized');
+        } catch (error) {
+            console.error('⚠️  Gmail watch service failed to initialize:', error);
+        }
+        */
+
         app.listen(PORT, () => {
             console.log(`Server is running on port ${PORT}`);
         });

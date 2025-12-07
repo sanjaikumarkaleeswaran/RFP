@@ -1,25 +1,32 @@
+import { useSpace, useSpaceActions, useSpaceVendors } from '@/hooks';
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { useSpace, useSpaceActions, useSpaceVendors } from '../hooks/useSpaces';
-import { Button } from '../components/ui/button';
-import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/card';
-import { Textarea } from '../components/ui/textarea';
-import { Checkbox } from '../components/ui/checkbox';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
-import { EmailPreviewDialog } from '../components/spaces/EmailPreviewDialog';
-import { ImportEmailDialog } from '../components/spaces/ImportEmailDialog';
-import { emailService, type Email } from '../services/email.service';
+import type { Email, VendorEmailStatus } from '@/types';
+import { Button } from '@/components/ui/button';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Textarea } from '@/components/ui/textarea';
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+    Eye,
+    Send,
+    Mail,
+    MailCheck,
+    Inbox,
+    FileText,
+    Upload,
+    BarChart3,
+    X,
+    RefreshCw
+} from 'lucide-react';
 import { toast } from 'sonner';
-import { Mail, MailCheck, Eye, Send, Upload, BarChart3, Inbox, X } from 'lucide-react';
+import { emailService } from '@/services/email.service';
 import { fetchWrapper } from '@/shared/utils/fetchWrapper';
+import { EmailPreviewDialog } from '@/components/spaces/EmailPreviewDialog';
+import { ImportEmailDialog } from '@/components/spaces/ImportEmailDialog';
+import { VendorConversationDialog } from '@/components/vendors/VendorConversationDialog';
 
-interface VendorEmailStatus {
-    vendorId: string;
-    sent: boolean;
-    sentAt?: Date;
-    received: boolean;
-    receivedAt?: Date;
-}
+
 
 export function SpaceDetailPage() {
     const { spaceId } = useParams();
@@ -43,6 +50,8 @@ export function SpaceDetailPage() {
     const [selectedImportedEmail, setSelectedImportedEmail] = useState<Email | null>(null);
     const [showVendorMapModal, setShowVendorMapModal] = useState(false);
     const [selectedVendorForMap, setSelectedVendorForMap] = useState('');
+    const [selectedVendorForConversation, setSelectedVendorForConversation] = useState<{ id: string; name: string; email: string } | null>(null);
+    const [showProposalManagement, setShowProposalManagement] = useState(false);
 
     // Update email template when space data changes
     useEffect(() => {
@@ -108,7 +117,7 @@ export function SpaceDetailPage() {
         }
     };
 
-    // Initialize and fetch email statuses for vendors
+    // Initialize and fetch email statuses for vendors with auto-refresh
     useEffect(() => {
         const fetchStatuses = async () => {
             if (vendors && space?.id) {
@@ -127,9 +136,21 @@ export function SpaceDetailPage() {
                     const response = await fetch(`http://localhost:5000/api/spaces/${space.id}/email-statuses`);
                     if (response.ok) {
                         const data = await response.json();
+
+                        // Check for new received emails
+                        const previousStatuses = emailStatuses;
+                        let newReceivedCount = 0;
+
                         // Merge backend data with initial statuses
                         Object.keys(data).forEach(vendorId => {
                             if (initialStatuses[vendorId]) {
+                                const wasReceived = previousStatuses[vendorId]?.received || false;
+                                const isNowReceived = data[vendorId].received;
+
+                                if (!wasReceived && isNowReceived) {
+                                    newReceivedCount++;
+                                }
+
                                 initialStatuses[vendorId] = {
                                     ...initialStatuses[vendorId],
                                     sent: data[vendorId].sent,
@@ -139,6 +160,13 @@ export function SpaceDetailPage() {
                                 };
                             }
                         });
+
+                        // Show notification for new emails
+                        if (newReceivedCount > 0) {
+                            toast.success(`${newReceivedCount} new email${newReceivedCount > 1 ? 's' : ''} received!`, {
+                                duration: 5000,
+                            });
+                        }
                     }
                     setEmailStatuses(initialStatuses);
                 } catch (error) {
@@ -148,7 +176,38 @@ export function SpaceDetailPage() {
         };
 
         fetchStatuses();
+
+        // Auto-refresh every 30 seconds
+        const intervalId = setInterval(() => {
+            fetchStatuses();
+            loadImportedEmailsCount(); // Also refresh imported emails count
+        }, 30000); // 30 seconds
+
+        return () => clearInterval(intervalId);
     }, [vendors, space?.id]);
+
+    // Auto-check for new replies from Gmail
+    useEffect(() => {
+        const checkForNewReplies = async () => {
+            if (space?.id) {
+                try {
+                    await emailService.checkForReplies();
+                    console.log('Checked for new Gmail replies');
+                } catch (error) {
+                    console.error('Failed to check for replies:', error);
+                }
+            }
+        };
+
+        // Check immediately on mount
+        checkForNewReplies();
+
+        // Then check every 60 seconds
+        const intervalId = setInterval(checkForNewReplies, 60000); // 60 seconds
+
+        return () => clearInterval(intervalId);
+    }, [space?.id]);
+
 
     if (isLoading) return <div className="flex items-center justify-center h-64">Loading space...</div>;
     if (!space) return <div className="flex items-center justify-center h-64">Space not found</div>;
@@ -190,12 +249,12 @@ export function SpaceDetailPage() {
 
         setIsSending(true);
         try {
-            
-            const result:any = await fetchWrapper('POST', `/spaces/${space.id}/send-rfp`, {
+
+            const result: any = await fetchWrapper('POST', `/spaces/${space.id}/send-rfp`, {
                 vendorIds: selectedVendors,
                 emailContent: emailTemplate
             });
-            console.log({result})
+            console.log({ result })
 
 
             // Update email statuses
@@ -255,6 +314,10 @@ export function SpaceDetailPage() {
                     </div>
                 </div>
                 <div className="flex gap-2">
+                    <Button variant="outline" onClick={() => setShowProposalManagement(true)}>
+                        <FileText className="w-4 h-4 mr-2" />
+                        Manage Proposals
+                    </Button>
                     <Button variant="outline" onClick={() => setShowImportDialog(true)}>
                         <Upload className="w-4 h-4 mr-2" />
                         Import Email
@@ -379,6 +442,7 @@ export function SpaceDetailPage() {
                                         <TableHead>Categories</TableHead>
                                         <TableHead className="text-center">Sent</TableHead>
                                         <TableHead className="text-center">Received</TableHead>
+                                        <TableHead className="text-center">Actions</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -433,6 +497,20 @@ export function SpaceDetailPage() {
                                                     ) : (
                                                         <Mail className="w-4 h-4 text-gray-400 mx-auto" />
                                                     )}
+                                                </TableCell>
+                                                <TableCell className="text-center">
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() => setSelectedVendorForConversation({
+                                                            id: vendor.id,
+                                                            name: vendor.name,
+                                                            email: vendor.emails?.[0] || ''
+                                                        })}
+                                                        title="View conversation for this space"
+                                                    >
+                                                        <Eye className="h-4 w-4 text-blue-600" />
+                                                    </Button>
                                                 </TableCell>
                                             </TableRow>
                                         );
@@ -589,6 +667,26 @@ export function SpaceDetailPage() {
                     </div>
                 </div>
             )}
+
+            {/* Vendor Conversation Dialog for this Space */}
+            {selectedVendorForConversation && (
+                <VendorConversationDialog
+                    open={!!selectedVendorForConversation}
+                    onOpenChange={(open) => !open && setSelectedVendorForConversation(null)}
+                    vendorId={selectedVendorForConversation.id}
+                    vendorName={selectedVendorForConversation.name}
+                    vendorEmail={selectedVendorForConversation.email}
+                    spaceId={space.id}
+                />
+            )}
+
+            {/* Proposal Management Dialog */}
+            {/* <ProposalManagementDialog
+                open={showProposalManagement}
+                onOpenChange={setShowProposalManagement}
+                spaceId={space.id}
+                spaceName={space.name}
+            /> */}
         </div>
     );
 }

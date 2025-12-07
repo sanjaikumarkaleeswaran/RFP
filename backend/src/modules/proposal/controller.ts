@@ -43,3 +43,19 @@ export const parseProposal = async (req: Request, res: Response, next: NextFunct
         next(error);
     }
 };
+
+export const updateProposalStatus = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const { status } = req.body;
+        if (!['new', 'parsed', 'need_review', 'accepted', 'rejected'].includes(status)) {
+            throw new AppError('Invalid status', 400);
+        }
+        const proposal = await proposalService.updateProposal(req.params.id, { status });
+        if (!proposal) {
+            throw new AppError('Proposal not found', 404);
+        }
+        res.status(200).json(proposal);
+    } catch (error) {
+        next(error);
+    }
+};

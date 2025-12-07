@@ -44,16 +44,33 @@ export interface Vendor {
 
 export interface Email {
   id: string;
-  userId: string;
+  userId?: string;
   spaceId?: string;
+  gmailMessageId?: string;
+  messageId?: string;
+  threadId?: string;
   from: { name?: string; email: string };
   to: { name?: string; email: string }[];
   subject?: string;
   bodyPlain?: string;
   bodyHtml?: string;
-  direction: 'INBOUND' | 'OUTBOUND';
-  provider: 'GMAIL' | 'IMAP' | 'MANUAL';
-  createdAt: Date;
+  date?: string;
+  direction?: 'INBOUND' | 'OUTBOUND' | 'inbound' | 'outbound';
+  provider?: 'GMAIL' | 'IMAP' | 'MANUAL';
+  isImported?: boolean;
+  isReply?: boolean;
+  importedToSpaceId?: string;
+  vendorId?: { id: string; name: string; email?: string } | string;
+  attachments?: {
+    filename: string;
+    mimeType: string;
+    size: number;
+    attachmentId?: string;
+    contentId?: string;
+    inline?: boolean;
+  }[];
+  createdAt: Date | string;
+  receivedAt?: Date | string;
 }
 
 export interface Proposal {
@@ -78,4 +95,12 @@ export interface AuthResponse {
   accessToken: string;
   refreshToken: string;
   user: User;
+}
+
+export interface VendorEmailStatus {
+  vendorId: string;
+  sent: boolean;
+  sentAt?: Date;
+  received: boolean;
+  receivedAt?: Date;
 }

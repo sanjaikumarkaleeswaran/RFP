@@ -559,6 +559,50 @@ export const getSentEmails = async (req: Request, res: Response, next: NextFunct
     }
 };
 
+/**
+ * GET /emails/vendor/:vendorId - Get all emails for a specific vendor
+ */
+export const getVendorEmails = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const userId = (req as any).user?.id;
+        const { vendorId } = req.params;
+
+        if (!userId) {
+            throw new AppError('User not authenticated', 401);
+        }
+
+        // Get vendor to find their email addresses
+        const { vendorService } = await import('../vendor/service');
+        const vendor = await vendorService.getVendorById(vendorId);
+
+        if (!vendor) {
+            throw new AppError('Vendor not found', 404);
+        }
+
+        const vendorEmails = vendor.emails || [];
+
+        // Find all emails (sent and received) involving this vendor
+        const emails = await Email.find({
+            userId: new mongoose.Types.ObjectId(userId),
+            $or: [
+                { 'from.email': { $in: vendorEmails } }, // Emails FROM vendor
+                { 'to.email': { $in: vendorEmails } }     // Emails TO vendor
+            ]
+        })
+            .sort({ createdAt: -1 })
+            .limit(200);
+
+        res.json({
+            success: true,
+            count: emails.length,
+            data: emails
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+
 // ==================== EMAIL THREADING ENDPOINTS ====================
 
 /**

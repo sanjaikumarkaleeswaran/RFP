@@ -20,9 +20,11 @@ router.get('/gmail/auth-url', authenticate, emailController.getGmailAuthUrl);
 router.get('/gmail/oauth/callback', emailController.handleGmailCallback);
 router.get('/gmail/inbox', authenticate, emailController.getGmailInbox);
 router.post('/gmail/check-replies', emailController.checkGmailReplies);
-router.post('/gmail/send',authenticate, emailController.sendViaGmail);
+router.post('/check-replies', authenticate, emailController.checkGmailRepliesNow); // Alias for frontend
+router.post('/gmail/send', authenticate, emailController.sendViaGmail);
 router.get('/gmail/status', authenticate, emailController.getGmailStatus);
 router.post('/gmail/disconnect', authenticate, emailController.disconnectGmail);
+router.get('/vendor/:vendorId', authenticate, emailController.getVendorEmails); // Get emails for vendor
 
 // ==================== GMAIL WATCH ROUTES (Polling) ====================
 router.post('/gmail/watch/start', emailController.startGmailWatch);

@@ -1,9 +1,13 @@
 import { Router } from 'express';
 import * as spaceController from './controller';
 import { authenticate } from '../../common/middlewares/authenticate';
+import multer from 'multer';
 // import { authenticate } from '../../common/middlewares/auth';
 
 const router = Router();
+
+// Configure multer for file uploads (store in memory)
+const upload = multer({ storage: multer.memoryStorage() });
 
 // router.use(authenticate);
 
@@ -23,8 +27,8 @@ router.get('/:id/vendors', spaceController.getVendorsForSpace);
 // Email statuses for vendors
 router.get('/:id/email-statuses', spaceController.getVendorEmailStatuses);
 
-// Send RFP to selected vendors
-router.post('/:id/send-rfp',authenticate, spaceController.sendRFPToVendors);
+// Send RFP to selected vendors (with file upload support)
+router.post('/:id/send-rfp', authenticate, upload.array('attachments', 10), spaceController.sendRFPToVendors);
 
 // Compare proposals  
 router.get('/:id/proposals/compare', spaceController.compareProposals);

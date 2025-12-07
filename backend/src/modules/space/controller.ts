@@ -115,6 +115,7 @@ export const getVendorsForSpace = async (req: Request, res: Response, next: Next
 export const sendRFPToVendors = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { vendorIds, emailContent } = req.body;
+        const files = req.files as Express.Multer.File[];
 
         if (!vendorIds || !Array.isArray(vendorIds) || vendorIds.length === 0) {
             throw new AppError('Vendor IDs are required', 400);
@@ -124,7 +125,21 @@ export const sendRFPToVendors = async (req: Request, res: Response, next: NextFu
             throw new AppError('Email content is required', 400);
         }
 
-        const result = await spaceService.sendRFPToVendors(req.params.id, vendorIds,emailContent ,(req as any).user.id);
+        // Convert uploaded files to attachment format
+        const attachments = files?.map(file => ({
+            filename: file.originalname,
+            content: file.buffer,
+            mimeType: file.mimetype
+        })) || [];
+
+        const result = await spaceService.sendRFPToVendors(
+            req.params.id,
+            vendorIds,
+            emailContent,
+            (req as any).user.id,
+            attachments
+        );
+
         res.status(200).json(result);
     } catch (error) {
         next(error);

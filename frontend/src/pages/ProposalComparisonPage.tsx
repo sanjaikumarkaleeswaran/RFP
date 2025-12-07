@@ -54,10 +54,18 @@ export function ProposalComparisonPage() {
     const loadComparison = async () => {
         setIsLoading(true);
         try {
-            const response = await fetch(`http://localhost:5000/api/spaces/${spaceId}/proposals/compare`);
+            const token = localStorage.getItem('token');
+            const response = await fetch(`/api/spaces/${spaceId}/proposals/compare`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
             if (!response.ok) {
                 throw new Error('Failed to load comparison');
             }
+
             const result = await response.json();
             setData(result);
         } catch (error) {

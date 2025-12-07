@@ -98,7 +98,13 @@ export class SpaceService {
     /**
      * Send RFP to selected vendors via email
      */
-    async sendRFPToVendors(spaceId: string, vendorIds: string[], emailContent: string, userId: string) {
+    async sendRFPToVendors(
+        spaceId: string,
+        vendorIds: string[],
+        emailContent: string,
+        userId: string,
+        attachments?: Array<{ filename: string; content: Buffer; mimeType: string }>
+    ) {
         const space = await Space.findById(spaceId);
         if (!space) {
             throw new Error('Space not found');
@@ -146,9 +152,9 @@ export class SpaceService {
                     space.ownerId || new mongoose.Types.ObjectId(userId),
                     vendorEmail,
                     `RFP - ${space.name}`,
-                    emailContent,
-                    undefined, // text (we're using html)
-                    space._id
+                    undefined, // text
+                    emailContent, // html
+                    space._id // spaceId
                 );
 
                 if (emailResult.success) {
@@ -239,11 +245,17 @@ export class SpaceService {
     }
 
     /**
-     * Compare proposals using LLM
+     * Compare proposals using LLM with comprehensive analysis
      */
     async compareProposals(spaceId: string) {
         const { Email } = await import('../email/model');
         const { vendorService } = await import('../vendor/service');
+
+        // Get the space details
+        const space = await Space.findById(spaceId);
+        if (!space) {
+            throw new Error('Space not found');
+        }
 
         // 1. Get inbound emails (proposals)
         const emails = await Email.find({
@@ -253,9 +265,21 @@ export class SpaceService {
 
         if (emails.length === 0) {
             return {
-                summary: "No proposals received yet.",
-                rankings: [],
-                recommendation: "Waiting for vendor responses."
+                spaceId,
+                spaceName: space.name,
+                totalProposals: 0,
+                proposals: [],
+                comparison: {
+                    summary: "No proposals received yet. Proposals will appear here once vendors respond to your RFP.",
+                    vendorScores: [],
+                    priceComparison: null,
+                    recommendation: {
+                        recommendedVendor: '',
+                        reasoning: 'Waiting for vendor responses.',
+                        alternativeOptions: [],
+                        riskFactors: []
+                    }
+                }
             };
         }
 
@@ -264,34 +288,118 @@ export class SpaceService {
         for (const email of emails) {
             const vendor = await vendorService.getVendorByEmail(email.from.email);
             proposals.push({
+                vendorId: vendor?._id.toString() || email._id.toString(),
                 vendorName: vendor?.name || email.from.name || 'Unknown Vendor',
                 vendorCompany: vendor?.companyName || 'Unknown Company',
+                vendorEmail: email.from.email,
                 content: email.bodyPlain || email.bodyHtml || 'No content',
-                receivedAt: email.createdAt
+                receivedAt: email.createdAt,
+                hasAttachments: email.attachments && email.attachments.length > 0
             });
         }
 
-        // 3. Generate comparison using LLM
+        // 3. Generate comprehensive comparison using LLM
         const prompt = `
-      Compare the following vendor proposals for the RFP.
-      
-      Proposals:
-      ${JSON.stringify(proposals)}
-      
-      Output a JSON object with:
-      - summary: High-level summary of received proposals
-      - rankings: Array of objects { vendorName, score (0-100), pros, cons, price (if mentioned) }
-      - recommendation: Which vendor is recommended and why
-      
-      Focus on price, delivery time, and requirements match.
-    `;
+You are an expert procurement analyst. Analyze the following vendor proposals for an RFP and provide a comprehensive comparison.
+
+RFP Details:
+- Space Name: ${space.name}
+- Requirements: ${space.requirements || 'Not specified'}
+- Total Proposals Received: ${proposals.length}
+
+Vendor Proposals:
+${JSON.stringify(proposals, null, 2)}
+
+Provide a detailed analysis in the following JSON format:
+{
+  "summary": "A comprehensive 2-3 sentence summary of all proposals received, highlighting key trends and observations",
+  "vendorScores": [
+    {
+      "vendorId": "vendor ID from proposals",
+      "vendorName": "vendor name",
+      "scores": {
+        "priceCompetitiveness": 0-100 (how competitive is their pricing),
+        "termsQuality": 0-100 (quality of payment terms, warranties, etc),
+        "deliverySpeed": 0-100 (how fast can they deliver),
+        "completeness": 0-100 (how complete is their proposal),
+        "overallValue": 0-100 (overall value proposition)
+      },
+      "strengths": ["strength 1", "strength 2", "strength 3"],
+      "weaknesses": ["weakness 1", "weakness 2"]
+    }
+  ],
+  "priceComparison": {
+    "lowestPrice": {
+      "vendorName": "vendor with lowest price",
+      "amount": numeric value,
+      "currency": "USD" or other currency
+    },
+    "highestPrice": {
+      "vendorName": "vendor with highest price",
+      "amount": numeric value,
+      "currency": "USD" or other currency
+    },
+    "averagePrice": numeric average
+  },
+  "recommendation": {
+    "recommendedVendor": "name of recommended vendor",
+    "reasoning": "2-3 sentences explaining why this vendor is recommended",
+    "alternativeOptions": ["alternative vendor 1 with brief reason", "alternative vendor 2 with brief reason"],
+    "riskFactors": ["risk factor 1", "risk factor 2"]
+  }
+}
+
+Important:
+- Be objective and data-driven in your analysis
+- If pricing is not mentioned in proposals, estimate scores based on value indicators
+- Consider completeness, professionalism, and responsiveness
+- Identify any red flags or concerns
+- Provide actionable insights
+`;
 
         try {
             const comparison = await llmService.generateJson(prompt);
-            return comparison;
+
+            return {
+                spaceId,
+                spaceName: space.name,
+                totalProposals: proposals.length,
+                proposals,
+                comparison
+            };
         } catch (error) {
             console.error('Failed to compare proposals:', error);
-            throw error;
+
+            // Return a fallback response if LLM fails
+            return {
+                spaceId,
+                spaceName: space.name,
+                totalProposals: proposals.length,
+                proposals,
+                comparison: {
+                    summary: `Received ${proposals.length} proposal(s) from vendors. AI analysis temporarily unavailable.`,
+                    vendorScores: proposals.map((p, idx) => ({
+                        vendorId: p.vendorId,
+                        vendorName: p.vendorName,
+                        scores: {
+                            priceCompetitiveness: 70,
+                            termsQuality: 70,
+                            deliverySpeed: 70,
+                            completeness: 70,
+                            overallValue: 70
+                        },
+                        strengths: ['Proposal received'],
+                        weaknesses: ['Analysis pending']
+                    })),
+                    priceComparison: null,
+                    recommendation: {
+                        recommendedVendor: proposals[0]?.vendorName || '',
+                        reasoning: 'Please review proposals manually. AI analysis is temporarily unavailable.',
+                        alternativeOptions: [],
+                        riskFactors: ['AI analysis unavailable - manual review recommended']
+                    }
+                }
+            };
         }
     }
 

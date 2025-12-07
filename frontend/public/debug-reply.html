@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Vendor Reply</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 40px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 3px solid #4CAF50;
+            padding-bottom: 10px;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 10px 5px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        #output {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+            border-radius: 4px;
+            margin-top: 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+        .success { color: #4CAF50; }
+        .error { color: #f44336; }
+        .warning { color: #ff9800; }
+        .info { color: #2196F3; }
+        .section { border-top: 1px solid #444; margin-top: 15px; padding-top: 15px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Vendor Reply Diagnostic Tool</h1>
+        <p>This tool will help diagnose why vendor replies are not showing in the UI.</p>
+        
+        <div>
+            <button onclick="runFullDiagnostic()" id="diagBtn">🚀 Run Full Diagnostic</button>
+            <button onclick="forceCheckReplies()" id="checkBtn">📧 Force Check Replies</button>
+            <button onclick="clearOutput()">🗑️ Clear Output</button>
+        </div>
+        
+        <div id="output"></div>
+    </div>
+
+    <script>
+        const output = document.getElementById('output');
+        
+        function log(message, type = 'info') {
+            const colors = {
+                success: '#4CAF50',
+                error: '#f44336',
+                warning: '#ff9800',
+                info: '#2196F3'
+            };
+            const timestamp = new Date().toLocaleTimeString();
+            output.innerHTML += `<div style="color: ${colors[type]}">[${timestamp}] ${message}</div>`;
+            output.scrollTop = output.scrollHeight;
+        }
+        
+        function logSection(title) {
+            output.innerHTML += `<div class="section"><strong style="color: #fff">${title}</strong></div>`;
+        }
+        
+        function clearOutput() {
+            output.innerHTML = '';
+        }
+        
+        async function forceCheckReplies() {
+            const btn = document.getElementById('checkBtn');
+            btn.disabled = true;
+            
+            try {
+                clearOutput();
+                log('🔍 Starting forced reply check...', 'info');
+                
+                const token = localStorage.getItem('token');
+                if (!token) {
+                    log('❌ No authentication token found. Please log in first.', 'error');
+                    return;
+                }
+                
+                log('⏳ Checking Gmail for new replies (this may take 10-30 seconds)...', 'info');
+                
+                const response = await fetch('/api/emails/check-replies', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    if (result.replies && result.replies.length > 0) {
+                        log(`✅ SUCCESS! Found ${result.replies.length} new reply(s)!`, 'success');
+                        log(`📧 Replies: ${JSON.stringify(result.replies, null, 2)}`, 'info');
+                        alert(`✅ Found ${result.replies.length} new vendor reply(s)! Refreshing page...`);
+                        window.location.reload();
+                    } else {
+                        log('📭 No new replies found', 'warning');
+                        log('💡 This could mean:', 'info');
+                        log('   • Reply is already in database', 'info');
+                        log('   • Reply is not in the same thread', 'info');
+                        log('   • Reply is from a different email address', 'info');
+                    }
+                } else {
+                    log(`❌ Check failed: ${result.message || 'Unknown error'}`, 'error');
+                }
+                
+            } catch (error) {
+                log(`❌ Error: ${error.message}`, 'error');
+                console.error('Full error:', error);
+            } finally {
+                btn.disabled = false;
+            }
+        }
+        
+        async function runFullDiagnostic() {
+            const btn = document.getElementById('diagBtn');
+            btn.disabled = true;
+            
+            try {
+                clearOutput();
+                log('='.repeat(60), 'info');
+                log('🔍 VENDOR REPLY DIAGNOSTIC TOOL', 'info');
+                log('='.repeat(60), 'info');
+                
+                const token = localStorage.getItem('token');
+                if (!token) {
+                    log('❌ No authentication token found. Please log in first.', 'error');
+                    return;
+                }
+                
+                // 1. Check Gmail connection
+                logSection('1️⃣ Checking Gmail Connection');
+                try {
+                    const gmailStatus = await fetch('/api/emails/gmail/status', {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    }).then(r => r.json());
+                    
+                    if (gmailStatus.connected) {
+                        log(`✅ Gmail connected: ${gmailStatus.email}`, 'success');
+                    } else {
+                        log('❌ Gmail not connected', 'error');
+                        return;
+                    }
+                } catch (error) {
+                    log(`❌ Gmail connection error: ${error.message}`, 'error');
+                    return;
+                }
+                
+                // 2. Check sent emails
+                logSection('2️⃣ Checking Sent Emails in Database');
+                const sentEmails = await fetch('/api/emails/debug/sent', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                }).then(r => r.json());
+                
+                log(`📤 Found ${sentEmails.count} sent emails`, 'info');
+                if (sentEmails.emails && sentEmails.emails.length > 0) {
+                    sentEmails.emails.forEach((email, idx) => {
+                        log(`   ${idx + 1}. "${email.subject}"`, 'info');
+                        log(`      To: ${email.to.map(t => t.email).join(', ')}`, 'info');
+                        log(`      Has Reply: ${email.hasReply ? '✅ Yes' : '❌ No'}`, email.hasReply ? 'success' : 'warning');
+                        log(`      Thread ID: ${email.threadId || 'N/A'}`, 'info');
+                    });
+                } else {
+                    log('⚠️ No sent emails found in database', 'warning');
+                }
+                
+                // 3. Check current inbound emails
+                logSection('3️⃣ Checking Current Inbound Emails');
+                const inboundBefore = await fetch('/api/emails?direction=inbound', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                }).then(r => r.json());
+                
+                const beforeCount = inboundBefore.data?.length || 0;
+                log(`📥 Current inbound emails: ${beforeCount}`, 'info');
+                
+                // 4. Force check for replies
+                logSection('4️⃣ Forcing Gmail Reply Check');
+                log('⏳ Checking Gmail... This may take 10-30 seconds...', 'info');
+                
+                const checkResult = await fetch('/api/emails/check-replies', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                }).then(r => r.json());
+                
+                log(`✅ Check complete: ${checkResult.message}`, 'success');
+                if (checkResult.replies && checkResult.replies.length > 0) {
+                    log(`📧 Found ${checkResult.replies.length} new reply(s)`, 'success');
+                    checkResult.replies.forEach((reply, idx) => {
+                        log(`   ${idx + 1}. From: ${reply.from}`, 'success');
+                        log(`      Subject: ${reply.subject}`, 'info');
+                    });
+                }
+                
+                // 5. Check inbound emails again
+                logSection('5️⃣ Checking Inbound Emails After Sync');
+                const inboundAfter = await fetch('/api/emails?direction=inbound', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                }).then(r => r.json());
+                
+                const afterCount = inboundAfter.data?.length || 0;
+                log(`📥 Inbound emails after check: ${afterCount}`, 'info');
+                
+                // 6. Show results
+                logSection('📊 RESULTS');
+                const newEmails = afterCount - beforeCount;
+                
+                if (newEmails > 0) {
+                    log(`🎉 SUCCESS! Found ${newEmails} new vendor reply(s)!`, 'success');
+                    log('📧 New emails:', 'success');
+                    inboundAfter.data.slice(0, newEmails).forEach((email, idx) => {
+                        log(`   ${idx + 1}. From: ${email.from.email}`, 'success');
+                        log(`      Subject: ${email.subject}`, 'info');
+                        log(`      Date: ${new Date(email.receivedAt || email.createdAt).toLocaleString()}`, 'info');
+                    });
+                    
+                    if (confirm(`✅ Found ${newEmails} new vendor reply(s)! Refresh the page now?`)) {
+                        window.location.reload();
+                    }
+                } else {
+                    log('📭 No new replies detected', 'warning');
+                    log('', 'info');
+                    log('📋 Possible reasons:', 'info');
+                    log('   1. Reply is not in the same thread as the original email', 'info');
+                    log('   2. Reply is from a different email address', 'info');
+                    log('   3. Gmail API hasn\'t synced yet (try again in 30 seconds)', 'info');
+                    log('   4. Original email was not sent via Gmail API', 'info');
+                    log('', 'info');
+                    log('💡 Next steps:', 'info');
+                    log('   • Check backend terminal logs for more details', 'info');
+                    log('   • Go to Inbox page and manually import the email', 'info');
+                    log('   • Wait 30 seconds and run this diagnostic again', 'info');
+                }
+                
+                log('='.repeat(60), 'info');
+                log('✅ Diagnostic complete', 'success');
+                
+            } catch (error) {
+                log(`❌ Diagnostic error: ${error.message}`, 'error');
+                console.error('Full error:', error);
+            } finally {
+                btn.disabled = false;
+            }
+        }
+        
+        // Auto-run on page load
+        window.addEventListener('load', () => {
+            log('🚀 Diagnostic tool ready', 'success');
+            log('Click "Run Full Diagnostic" to start', 'info');
+        });
+    </script>
+</body>
+</html>
