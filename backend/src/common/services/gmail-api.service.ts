@@ -170,22 +170,25 @@ class GmailAPIService {
         subject: string,
         text?: string,
         html?: string,
-        spaceId?: mongoose.Types.ObjectId
+        spaceId?: mongoose.Types.ObjectId,
+        inReplyTo?: string,
+        threadIdParam?: string
     ): Promise<{ success: boolean; messageId?: string; threadId?: string; error?: string }> {
         try {
             console.log('📧 Sending email via Gmail API...', { userId, to, subject });
             const auth = await this.getAuthClientForUser(userId);
             const gmail = google.gmail({ version: 'v1', auth });
 
-            // Create email message
-            const message = this.createEmailMessage(to, subject, text, html);
+            // Create email message with threading headers
+            const message = this.createEmailMessage(to, subject, text, html, inReplyTo);
             const encodedMessage = Buffer.from(message).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 
-            // Send email
+            // Send email with threading
             const response = await gmail.users.messages.send({
                 userId: 'me',
                 requestBody: {
-                    raw: encodedMessage
+                    raw: encodedMessage,
+                    threadId: threadIdParam
                 }
             });
 
@@ -266,15 +269,22 @@ class GmailAPIService {
     /**
      * Create RFC 2822 formatted email message
      */
-    private createEmailMessage(to: string, subject: string, text?: string, html?: string): string {
+    private createEmailMessage(to: string, subject: string, text?: string, html?: string, inReplyTo?: string): string {
         const messageParts = [
             `To: ${to}`,
             `Subject: ${subject}`,
             'MIME-Version: 1.0',
-            'Content-Type: text/html; charset=utf-8',
-            '',
-            html || text || ''
+            'Content-Type: text/html; charset=utf-8'
         ];
+
+        // Add In-Reply-To header for threading
+        if (inReplyTo) {
+            messageParts.push(`In-Reply-To: ${inReplyTo}`);
+            messageParts.push(`References: ${inReplyTo}`);
+        }
+
+        messageParts.push('');
+        messageParts.push(html || text || '');
 
         return messageParts.join('\n');
     }
