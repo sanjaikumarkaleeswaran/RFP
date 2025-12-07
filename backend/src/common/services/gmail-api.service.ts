@@ -114,7 +114,7 @@ class GmailAPIService {
         if (!this.oauth2Client) {
             throw new Error('OAuth2 client not initialized');
         }
-                console.log({userId})
+        console.log({ userId })
 
 
         const tokenDoc = await GmailToken.findOne({ userId, isActive: true });
@@ -173,9 +173,8 @@ class GmailAPIService {
         spaceId?: mongoose.Types.ObjectId
     ): Promise<{ success: boolean; messageId?: string; threadId?: string; error?: string }> {
         try {
-            console.log({userId})
+            console.log('📧 Sending email via Gmail API...', { userId, to, subject });
             const auth = await this.getAuthClientForUser(userId);
-            console.log({auth})
             const gmail = google.gmail({ version: 'v1', auth });
 
             // Create email message
@@ -191,10 +190,43 @@ class GmailAPIService {
             });
 
             console.log('✅ Email sent via Gmail API to:', to);
+            console.log('   Gmail Message ID:', response.data.id);
+            console.log('   Thread ID:', response.data.threadId);
+
+            // Get the full message details to extract the actual Message-ID header
+            const sentMessage = await gmail.users.messages.get({
+                userId: 'me',
+                id: response.data.id!,
+                format: 'full'
+            });
+
+            const headers = sentMessage.data.payload?.headers || [];
+            const getHeader = (name: string) =>
+                headers.find((h: any) => h.name.toLowerCase() === name.toLowerCase())?.value;
+
+            const actualMessageId = getHeader('Message-ID');
+            console.log('   Message-ID Header:', actualMessageId);
+
+            // Check for duplicate before saving
+            const existingEmail = await Email.findOne({
+                $or: [
+                    { gmailMessageId: response.data.id },
+                    { messageId: actualMessageId }
+                ]
+            });
+
+            if (existingEmail) {
+                console.log('⚠️  Email already exists in database, skipping save');
+                return {
+                    success: true,
+                    messageId: response.data.id!,
+                    threadId: response.data.threadId!
+                };
+            }
 
             // Save to database
             const tokenDoc = await GmailToken.findOne({ userId });
-            await Email.create({
+            const emailDoc = await Email.create({
                 userId,
                 spaceId,
                 from: {
@@ -205,15 +237,17 @@ class GmailAPIService {
                 subject,
                 bodyPlain: text,
                 bodyHtml: html,
-                messageId: response.data.id,
+                messageId: actualMessageId, // Use actual Message-ID header
                 threadId: response.data.threadId,
-                gmailMessageId: response.data.id,
+                gmailMessageId: response.data.id, // Store Gmail's internal ID separately
                 direction: 'outbound',
                 provider: 'gmail',
                 deliveryStatus: 'sent',
                 processed: true,
                 receivedAt: new Date()
             } as any);
+
+            console.log('✅ Email saved to database with ID:', (emailDoc as any)._id);
 
             return {
                 success: true,
@@ -309,6 +343,26 @@ class GmailAPIService {
             const inReplyTo = getHeader('In-Reply-To');
             const references = getHeader('References')?.split(' ') || [];
             const threadId = message.threadId;
+            const gmailMessageId = message.id;
+            const receivedDate = new Date(parseInt(message.internalDate));
+
+            console.log('📧 Parsing Gmail message...');
+            console.log('   Gmail Message ID:', gmailMessageId);
+            console.log('   Message-ID Header:', messageId);
+            console.log('   From:', from);
+
+            // COMPREHENSIVE DUPLICATE CHECK
+            const existingEmail = await Email.findOne({
+                $or: [
+                    { messageId: messageId },
+                    { gmailMessageId: gmailMessageId }
+                ]
+            });
+
+            if (existingEmail) {
+                console.log('⚠️  Email already exists in database (ID:', existingEmail._id, '), skipping save');
+                return null;
+            }
 
             // Extract email body
             let bodyPlain = '';
@@ -328,6 +382,29 @@ class GmailAPIService {
 
             getBody(message.payload);
 
+            // Extract attachments
+            const attachments: any[] = [];
+            const extractAttachments = (part: any): void => {
+                if (part.filename && part.body?.attachmentId) {
+                    attachments.push({
+                        filename: part.filename,
+                        mimeType: part.mimeType || 'application/octet-stream',
+                        size: part.body.size || 0,
+                        attachmentId: part.body.attachmentId,
+                        storagePath: '', // Will be populated when attachment is downloaded
+                        contentId: part.headers?.find((h: any) => h.name.toLowerCase() === 'content-id')?.value,
+                        inline: part.headers?.some((h: any) =>
+                            h.name.toLowerCase() === 'content-disposition' &&
+                            h.value.toLowerCase().includes('inline')
+                        ) || false
+                    });
+                }
+                if (part.parts) {
+                    part.parts.forEach(extractAttachments);
+                }
+            };
+            extractAttachments(message.payload);
+
             // Check if this is a reply to one of our sent emails
             let originalEmail: any = null;
             let isReply = false;
@@ -341,7 +418,7 @@ class GmailAPIService {
                         { threadId: threadId },
                         { gmailMessageId: threadId }
                     ]
-                });
+                }).lean();
 
                 isReply = !!originalEmail;
             }
@@ -349,8 +426,12 @@ class GmailAPIService {
             // Extract sender email
             const fromEmail = from?.match(/<(.+)>/)?.[1] || from;
 
+            console.log('✅ Saving new email to database...');
+            console.log('   Is Reply:', isReply);
+            console.log('   Has Attachments:', attachments.length > 0);
+
             // Save to database
-            const emailDoc: any = await Email.create({
+            const emailDoc = await Email.create({
                 userId,
                 spaceId: originalEmail?.spaceId,
                 from: {
@@ -361,21 +442,25 @@ class GmailAPIService {
                 subject,
                 bodyPlain,
                 bodyHtml,
+                attachments,
                 messageId,
                 inReplyTo,
                 references,
                 threadId,
-                gmailMessageId: message.id,
+                gmailMessageId,
                 direction: 'inbound',
                 provider: 'gmail',
-                receivedAt: new Date(parseInt(message.internalDate)),
+                deliveryStatus: 'delivered',
+                receivedAt: receivedDate,
                 processed: true,
                 isReply,
                 originalEmailId: originalEmail?._id
             } as any);
 
+            console.log('✅ Email saved with ID:', (emailDoc as any)._id);
+
             return {
-                id: emailDoc._id,
+                id: (emailDoc as any)._id.toString(),
                 from: fromEmail,
                 subject,
                 threadId,
@@ -383,7 +468,7 @@ class GmailAPIService {
                 bodyHtml,
                 isReply,
                 originalEmailId: originalEmail?._id,
-                receivedAt: emailDoc.receivedAt
+                receivedAt: (emailDoc as any).receivedAt
             };
         } catch (error) {
             console.error('Failed to parse Gmail message:', error);

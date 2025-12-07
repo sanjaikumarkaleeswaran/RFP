@@ -1,16 +1,27 @@
-import { Trash2 } from 'lucide-react';
+import { useState } from 'react';
+import { Trash2, Eye } from 'lucide-react';
 import { useVendors } from '../hooks/useVendors';
 import { AddVendorSheet } from '../components/vendors/AddVendorSheet';
 import { EditVendorSheet } from '../components/vendors/EditVendorSheet';
+import { VendorConversationDialog } from '../components/vendors/VendorConversationDialog';
 import { Button } from '../components/ui/button';
 
 export function VendorsPage() {
     const { vendors, isLoading, deleteVendor } = useVendors();
+    const [selectedVendor, setSelectedVendor] = useState<{ id: string; name: string; email: string } | null>(null);
 
     const handleDelete = (id: string, name: string) => {
         if (confirm(`Are you sure you want to delete vendor "${name}"?`)) {
             deleteVendor(id);
         }
+    };
+
+    const handleViewConversation = (vendor: any) => {
+        setSelectedVendor({
+            id: vendor.id,
+            name: vendor.name,
+            email: vendor.emails?.[0] || ''
+        });
     };
 
     if (isLoading) {
@@ -44,6 +55,14 @@ export function VendorsPage() {
                                     <td className="p-4 align-middle">{vendor.categories.join(', ')}</td>
                                     <td className="p-4 align-middle text-right">
                                         <div className="flex justify-end gap-2">
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => handleViewConversation(vendor)}
+                                                title="View email conversation"
+                                            >
+                                                <Eye className="h-4 w-4 text-blue-600" />
+                                            </Button>
                                             <EditVendorSheet vendor={vendor} />
                                             <Button
                                                 variant="ghost"
@@ -67,6 +86,17 @@ export function VendorsPage() {
                     </table>
                 </div>
             </div>
+
+            {/* Vendor Conversation Dialog */}
+            {selectedVendor && (
+                <VendorConversationDialog
+                    open={!!selectedVendor}
+                    onOpenChange={(open) => !open && setSelectedVendor(null)}
+                    vendorId={selectedVendor.id}
+                    vendorName={selectedVendor.name}
+                    vendorEmail={selectedVendor.email}
+                />
+            )}
         </div>
     );
 }

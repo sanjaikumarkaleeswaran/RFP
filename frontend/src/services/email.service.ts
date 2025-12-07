@@ -3,13 +3,21 @@ import { fetchWrapper } from '../shared/utils/fetchWrapper';
 export interface Email {
     id: string;
     gmailMessageId?: string;
+    messageId?: string;
     threadId?: string;
     from: { name?: string; email: string };
+    to: { name?: string; email: string }[];
     subject?: string;
     bodyPlain?: string;
+    bodyHtml?: string;
     date?: string;
+    createdAt?: string;
+    receivedAt?: string;
+    direction?: 'inbound' | 'outbound';
     isImported?: boolean;
+    isReply?: boolean;
     importedToSpaceId?: any;
+    spaceId?: string;
     vendorId?: any;
     attachments?: {
         filename: string;
@@ -64,5 +72,33 @@ export const emailService = {
     // Disconnect Gmail
     disconnectGmail: async (): Promise<any> => {
         return await fetchWrapper('POST', '/emails/gmail/disconnect');
+    },
+
+    // Get emails for a specific vendor
+    getVendorEmails: async (vendorId: string): Promise<{ success: boolean; data: Email[] }> => {
+        return await fetchWrapper('GET', `/emails/vendor/${vendorId}`);
+    },
+
+    // Send email via Gmail API
+    sendViaGmail: async (emailData: {
+        to: string;
+        subject: string;
+        body: string;
+        inReplyTo?: string;
+        threadId?: string;
+    }): Promise<any> => {
+        // Send body as HTML to ensure it's saved to bodyHtml field
+        return await fetchWrapper('POST', '/emails/gmail/send', {
+            to: emailData.to,
+            subject: emailData.subject,
+            html: emailData.body,  // Send as HTML
+            inReplyTo: emailData.inReplyTo,
+            threadId: emailData.threadId
+        });
+    },
+
+    // Check for new replies from Gmail
+    checkForReplies: async (): Promise<{ success: boolean; message: string; data: any[] }> => {
+        return await fetchWrapper('POST', '/emails/check-replies', {});
     }
 };

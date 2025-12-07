@@ -180,6 +180,8 @@ class GmailWatchService {
                         ? `in:inbox thread:${sentEmail.threadId}`
                         : `in:inbox subject:"Re: ${sentEmail.subject}"`;
 
+                    console.log(`🔍 Searching Gmail with query: "${query}"`);
+
                     const response = await gmail.users.messages.list({
                         userId: 'me',
                         q: query,
@@ -187,6 +189,7 @@ class GmailWatchService {
                     });
 
                     const messages = response.data.messages || [];
+                    console.log(`   Found ${messages.length} messages in Gmail for this thread`);
 
                     for (const message of messages) {
                         // Get full message details
@@ -205,7 +208,7 @@ class GmailWatchService {
                         const messageId = getHeader('Message-ID');
                         const gmailMessageId = messageData.data.id;
 
-                        // Check if we already saved this reply
+                        // Check if we already saved this reply - use comprehensive check
                         const existingReply = await Email.findOne({
                             $or: [
                                 { messageId: messageId },
@@ -214,6 +217,7 @@ class GmailWatchService {
                         });
 
                         if (existingReply) {
+                            console.log('⚠️  Reply already processed (Email ID:', existingReply._id, ')');
                             continue; // Already processed this reply
                         }
 
@@ -273,6 +277,35 @@ class GmailWatchService {
             const inReplyTo = getHeader('In-Reply-To');
             const references = getHeader('References')?.split(' ') || [];
             const threadId = message.threadId;
+            const gmailMessageId = message.id;
+            const receivedDate = new Date(parseInt(message.internalDate));
+
+            console.log('📧 Processing reply...');
+            console.log('   Gmail Message ID:', gmailMessageId);
+            console.log('   Message-ID Header:', messageId);
+            console.log('   Thread ID:', threadId);
+            console.log('   From:', from);
+
+            // COMPREHENSIVE DUPLICATE CHECK - Check multiple unique identifiers
+            const existingReply = await Email.findOne({
+                $or: [
+                    // Check by Message-ID header (most reliable)
+                    { messageId: messageId },
+                    // Check by Gmail's internal message ID
+                    { gmailMessageId: gmailMessageId },
+                    // Check by combination of threadId and timestamp (for emails without Message-ID)
+                    {
+                        threadId: threadId,
+                        receivedAt: receivedDate,
+                        'from.email': from?.match(/<(.+)>/)?.[1] || from
+                    }
+                ]
+            });
+
+            if (existingReply) {
+                console.log('⚠️  Reply already exists in database (ID:', existingReply._id, '), skipping save');
+                return null;
+            }
 
             // Extract email body
             let bodyPlain = '';
@@ -343,11 +376,11 @@ class GmailWatchService {
                 inReplyTo,
                 references,
                 threadId,
-                gmailMessageId: message.id,
+                gmailMessageId,
                 direction: 'inbound',
                 provider: 'gmail',
                 deliveryStatus: 'delivered',
-                receivedAt: new Date(parseInt(message.internalDate)),
+                receivedAt: receivedDate,
                 processed: true,
                 isReply: true,
                 originalEmailId: originalEmail._id
