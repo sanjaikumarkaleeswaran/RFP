@@ -100,8 +100,10 @@ export function VendorConversationDialog({
 
     const handleDownloadAttachment = async (emailId: string, attachmentId: string, filename: string) => {
         try {
-            const token = localStorage.getItem('token');
-            const response = await fetch(`/api/emails/${emailId}/attachments/${attachmentId}/download`, {
+            const token = localStorage.getItem('accessToken');
+            
+            const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+            const response = await fetch(`${API_BASE_URL}/emails/${emailId}/attachments/${attachmentId}/download`, {
                 headers: {
                     'Authorization': `Bearer ${token}`
                 }
@@ -130,8 +132,9 @@ export function VendorConversationDialog({
 
     const handlePreviewAttachment = async (emailId: string, attachmentId: string, filename: string, mimeType: string) => {
         try {
-            const token = localStorage.getItem('token');
-            const response = await fetch(`/api/emails/${emailId}/attachments/${attachmentId}/download`, {
+            const token = localStorage.getItem('accessToken');
+            const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+            const response = await fetch(`${API_BASE_URL}/emails/${emailId}/attachments/${attachmentId}/download`, {
                 headers: {
                     'Authorization': `Bearer ${token}`
                 }
