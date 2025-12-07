@@ -185,7 +185,7 @@ export function InboxPage() {
 
     const handleDownloadAttachment = async (emailId: string, attachmentId: string, filename: string) => {
         try {
-            const token = localStorage.getItem('token');
+            const token = localStorage.getItem('accessToken');
             const response = await fetch(`http://localhost:5000/api/emails/${emailId}/attachments/${attachmentId}/download`, {
                 headers: {
                     'Authorization': `Bearer ${token}`
@@ -213,7 +213,7 @@ export function InboxPage() {
 
     const handlePreviewAttachment = async (emailId: string, attachmentId: string) => {
         try {
-            const token = localStorage.getItem('token');
+            const token = localStorage.getItem('accessToken');
             const response = await fetch(`http://localhost:5000/api/emails/${emailId}/attachments/${attachmentId}/preview`, {
                 headers: {
                     'Authorization': `Bearer ${token}`
