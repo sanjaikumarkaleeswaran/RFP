@@ -258,6 +258,7 @@ class GmailWebhookService {
 
             // Process new messages
             let repliesFound = 0;
+            console.log(">>>>>>>>>>>>>>>>>>>>>>>>>>>", history, "")
             for (const record of history) {
                 if (record.messagesAdded) {
                     for (const addedMessage of record.messagesAdded) {
@@ -292,6 +293,7 @@ class GmailWebhookService {
      */
     private async processNewMessage(gmail: any, messageId: string, userId: mongoose.Types.ObjectId): Promise<boolean> {
         try {
+            console.log('Processing new message:', messageId);
             // Get full message details
             const messageData = await gmail.users.messages.get({
                 userId: 'me',
@@ -367,6 +369,7 @@ class GmailWebhookService {
 
             // Check if this is a reply to any of our sent emails
             let originalEmail: any = null;
+            console.log({ inReplyTo, threadId })
 
             // First, try to find by In-Reply-To header (most reliable)
             if (inReplyTo) {
@@ -381,6 +384,9 @@ class GmailWebhookService {
                 }
             }
 
+
+            console.log({ originalEmail })
+
             // If not found, try by threadId (less reliable but catches some cases)
             if (!originalEmail && threadId) {
                 originalEmail = await Email.findOne({
@@ -391,6 +397,40 @@ class GmailWebhookService {
 
                 if (originalEmail) {
                     console.log(`🔗 Found original email by threadId: ${originalEmail.subject}`);
+                }
+            }
+
+            // FALLBACK: If still not found, find ANY email in thread with spaceId
+            if (!originalEmail && threadId) {
+                console.log('🔍 Fallback 1: Searching for ANY email in thread with spaceId...');
+                originalEmail = await Email.findOne({
+                    userId,
+                    threadId,
+                    spaceId: { $exists: true, $ne: null }
+                }).sort({ createdAt: 1 });
+
+                if (originalEmail) {
+                    console.log(`🔗 Found email in thread with spaceId: ${originalEmail.subject} (spaceId: ${originalEmail.spaceId})`);
+                }
+            }
+
+            // FALLBACK 2: If still not found, search by subject pattern (for when Gmail creates new thread)
+            if (!originalEmail && subject) {
+                console.log('🔍 Fallback 2: Searching by subject pattern...');
+
+                // Extract base subject (remove "Re: " prefix)
+                const baseSubject = subject.replace(/^Re:\s*/i, '').trim();
+                console.log('   Base subject:', baseSubject);
+
+                // Find any email with matching subject that has spaceId
+                originalEmail = await Email.findOne({
+                    userId,
+                    subject: { $regex: baseSubject.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), $options: 'i' },
+                    spaceId: { $exists: true, $ne: null }
+                }).sort({ createdAt: 1 });
+
+                if (originalEmail) {
+                    console.log(`🔗 Found email by subject with spaceId: ${originalEmail.subject} (spaceId: ${originalEmail.spaceId})`);
                 }
             }
 
