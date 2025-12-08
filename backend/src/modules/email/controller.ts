@@ -1003,6 +1003,14 @@ export const getImportedEmailsCount = async (req: Request, res: Response, next: 
             throw new AppError('User not authenticated', 401);
         }
 
+        // Validate spaceId is a valid ObjectId
+        if (!mongoose.Types.ObjectId.isValid(spaceId)) {
+            return res.json({
+                success: true,
+                count: 0
+            });
+        }
+
         const count = await Email.countDocuments({
             userId: new mongoose.Types.ObjectId(userId),
             importedToSpaceId: new mongoose.Types.ObjectId(spaceId),
