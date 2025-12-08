@@ -139,10 +139,3 @@ This project was built with the assistance of advanced AI coding agents and LLMs
     *   Detailed context was provided to the AI to generate the extraction schemas (Zod).
     *   "Chain of thought" prompting was used for the comparison logic to ensure the AI explains *why* a vendor is recommended.
 
-## 🎥 Demo Video
-
-[Link to Demo Video] *(Please insert your Loom/Drive link here before submission)*
-
----
-
-*This project is a submission for the SDE Assignment – AI-Powered RFP Management System.*
