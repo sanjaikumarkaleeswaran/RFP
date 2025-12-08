@@ -97,7 +97,7 @@ export function SpaceDetailPage() {
     const handleMapVendorToEmail = (email: Email) => {
         setSelectedImportedEmail(email);
         setShowVendorMapModal(true);
-        setSelectedVendorForMap(email.vendorId?.id || '');
+        setSelectedVendorForMap(typeof email.vendorId === 'object' ? email.vendorId?.id || '' : email.vendorId || '');
     };
 
     const handleVendorMapSubmit = async () => {
@@ -654,7 +654,7 @@ export function SpaceDetailPage() {
                                                 {email.vendorId && (
                                                     <div className="mt-2">
                                                         <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
-                                                            Mapped to: {email.vendorId.name}
+                                                            Mapped to: {typeof email.vendorId === 'object' ? email.vendorId.name : email.vendorId}
                                                         </span>
                                                     </div>
                                                 )}
