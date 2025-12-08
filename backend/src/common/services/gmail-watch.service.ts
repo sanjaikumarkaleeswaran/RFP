@@ -2,6 +2,7 @@ import { google } from 'googleapis';
 import { OAuth2Client } from 'google-auth-library';
 import { GmailToken } from '../../modules/email/gmail-token.model';
 import { Email } from '../../modules/email/model';
+import { vendorProposalService } from '../../modules/vendor-proposal/service';
 import mongoose from 'mongoose';
 import path from 'path';
 import fs from 'fs';
@@ -224,7 +225,11 @@ class GmailWatchService {
                         // Check if this is a reply to our sent email
                         const isReplyToOurEmail = inReplyTo === sentEmail.messageId ||
                             messageData.data.threadId === sentEmail.threadId;
-
+                        console.log('isReplyToOurEmail', isReplyToOurEmail);
+                        console.log('inReplyTo', inReplyTo);
+                        console.log('sentEmail.messageId', sentEmail.messageId);
+                        console.log('messageData.data.threadId', messageData.data.threadId);
+                        console.log('sentEmail.threadId', sentEmail.threadId);
                         if (isReplyToOurEmail) {
                             console.log('💬 NEW REPLY DETECTED!');
 
@@ -363,6 +368,7 @@ class GmailWatchService {
             const replyEmail = await Email.create({
                 userId,
                 spaceId: originalEmail.spaceId,
+                vendorId: originalEmail.vendorId, // Preserve vendor association
                 from: {
                     email: fromEmail,
                     name: fromName
@@ -388,6 +394,23 @@ class GmailWatchService {
 
             console.log('✅ Reply saved to database!');
             console.log('  Reply ID:', replyEmail._id);
+
+            // 🤖 AUTO-ANALYZE VENDOR PROPOSAL
+            if (replyEmail.vendorId && replyEmail.spaceId) {
+                console.log('🤖 Triggering automatic vendor proposal analysis...');
+                console.log('   Vendor ID:', replyEmail.vendorId);
+                console.log('   Space ID:', replyEmail.spaceId);
+                try {
+                    const proposal = await vendorProposalService.analyzeVendorReply(replyEmail._id.toString());
+                    console.log('✅ Vendor proposal analysis completed!');
+                    console.log('   Score:', proposal.overallScore);
+                    console.log('   Personal Feedback:', proposal.personalFeedback?.substring(0, 100) + '...');
+                    console.log('   Status:', proposal.status);
+                } catch (error) {
+                    console.error('❌ Failed to analyze vendor proposal:', error);
+                    // Don't throw - we still want to return the saved email
+                }
+            }
 
             return {
                 id: replyEmail._id,
