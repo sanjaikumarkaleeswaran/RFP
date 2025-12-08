@@ -144,6 +144,15 @@ export class SpaceService {
             }
 
             try {
+                // Personalize email content for this vendor
+                let personalizedContent = emailContent;
+
+                // Replace {{vendor_name}} with actual vendor name
+                personalizedContent = personalizedContent.replace(/\{\{vendor_name\}\}/gi, vendor.name);
+
+                // Replace {{company_name}} with actual company name
+                personalizedContent = personalizedContent.replace(/\{\{company_name\}\}/gi, vendor.companyName || vendor.name);
+
                 // Send email using Gmail API (NOT SMTP) so webhook can track replies
                 const { gmailAPIService } = await import('../../common/services/gmail-api.service');
                 const mongoose = await import('mongoose');
@@ -153,7 +162,7 @@ export class SpaceService {
                     vendorEmail,
                     `RFP - ${space.name}`,
                     undefined, // text
-                    emailContent, // html
+                    personalizedContent, // html - now personalized
                     space._id // spaceId
                 );
 
