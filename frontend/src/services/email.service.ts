@@ -1,33 +1,5 @@
 import { fetchWrapper } from '../shared/utils/fetchWrapper';
-
-export interface Email {
-    id: string;
-    gmailMessageId?: string;
-    messageId?: string;
-    threadId?: string;
-    from: { name?: string; email: string };
-    to: { name?: string; email: string }[];
-    subject?: string;
-    bodyPlain?: string;
-    bodyHtml?: string;
-    date?: string;
-    createdAt?: string;
-    receivedAt?: string;
-    direction?: 'inbound' | 'outbound';
-    isImported?: boolean;
-    isReply?: boolean;
-    importedToSpaceId?: any;
-    spaceId?: string;
-    vendorId?: any;
-    attachments?: {
-        filename: string;
-        mimeType: string;
-        size: number;
-        attachmentId?: string;
-        contentId?: string;
-        inline?: boolean;
-    }[];
-}
+import type { Email } from '../types';
 
 export const emailService = {
     // Get Gmail inbox from Gmail API
