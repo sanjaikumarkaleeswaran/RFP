@@ -48,12 +48,12 @@ router.get('/threads/stats', emailController.getThreadStats);
 router.get('/:id/thread', emailController.getEmailThread);
 
 // ==================== INBOX ROUTES ====================
-router.get('/inbox', emailController.getInbox);
+router.get('/inbox', authenticate, emailController.getInbox);
 router.post('/:id/import', authenticate, emailController.importEmailToSpace);
 router.post('/:id/map-vendor', emailController.mapEmailToVendor);
-router.get('/imported/:spaceId', emailController.getImportedEmails);
-router.get('/imported/count/:spaceId', emailController.getImportedEmailsCount);
-router.patch('/:id/mark-read', emailController.markEmailAsRead);
+router.get('/imported/:spaceId', authenticate, emailController.getImportedEmails);
+router.get('/imported/count/:spaceId', authenticate, emailController.getImportedEmailsCount);
+router.patch('/:id/mark-read', authenticate, emailController.markEmailAsRead);
 
 // ==================== DEBUG ROUTES ====================
 router.get('/debug/sent', authenticate, emailController.debugSentEmails);

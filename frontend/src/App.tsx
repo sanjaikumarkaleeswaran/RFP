@@ -8,7 +8,7 @@ import { DashboardPage } from './pages/DashboardPage';
 import { InboxPage } from './pages/InboxPage';
 import { MySpacesPage } from './pages/MySpacesPage';
 import { SpaceDetailPage } from './pages/SpaceDetailPage';
-import { ProposalComparisonPage } from './pages/ProposalComparisonPage';
+import CompareProposalsPage from './pages/CompareProposalsPage';
 import { VendorsPage } from './pages/VendorsPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { GmailConnectedPage } from './pages/GmailConnectedPage';
@@ -33,7 +33,7 @@ function App() {
             <Route path="/inbox" element={<InboxPage />} />
             <Route path="/myspaces" element={<MySpacesPage />} />
             <Route path="/spaces/:spaceId" element={<SpaceDetailPage />} />
-            <Route path="/spaces/:spaceId/compare" element={<ProposalComparisonPage />} />
+            <Route path="/spaces/:spaceId/compare" element={<CompareProposalsPage />} />
             <Route path="/vendors" element={<VendorsPage />} />
             <Route path="/settings" element={<SettingsPage />} />
           </Route>

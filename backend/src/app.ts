@@ -11,6 +11,7 @@ import spaceRoutes from './modules/space/routes';
 import vendorRoutes from './modules/vendor/routes';
 import emailRoutes from './modules/email/routes';
 import proposalRoutes from './modules/proposal/routes';
+import vendorProposalRoutes from './modules/vendor-proposal/routes';
 import webhookRoutes from './modules/webhooks/resend-webhook';
 
 const app = express();
@@ -28,6 +29,7 @@ app.use('/api/spaces', spaceRoutes);
 app.use('/api/vendors', vendorRoutes);
 app.use('/api/emails', emailRoutes);
 app.use('/api/proposals', proposalRoutes);
+app.use('/api/vendor-proposals', vendorProposalRoutes);
 app.use('/api/webhooks', webhookRoutes);
 
 // Error Handler
