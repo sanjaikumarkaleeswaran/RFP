@@ -208,6 +208,25 @@ export function SpaceDetailPage() {
         return () => clearInterval(intervalId);
     }, [space?.id]);
 
+    // Auto-open vendor conversation if coming from Compare Proposals page
+    useEffect(() => {
+        const openVendorChatId = localStorage.getItem('openVendorChat');
+        if (openVendorChatId && vendors && vendors.length > 0) {
+            // Find the vendor by ID
+            const vendor = vendors.find(v => v.id === openVendorChatId);
+            if (vendor) {
+                // Open the conversation dialog
+                setSelectedVendorForConversation({
+                    id: vendor.id,
+                    name: vendor.name,
+                    email: vendor.emails?.[0] || ''
+                });
+                // Clear the localStorage flag
+                localStorage.removeItem('openVendorChat');
+            }
+        }
+    }, [vendors]);
+
 
     if (isLoading) return <div className="flex items-center justify-center h-64">Loading space...</div>;
     if (!space) return <div className="flex items-center justify-center h-64">Space not found</div>;
@@ -234,6 +253,20 @@ export function SpaceDetailPage() {
         } else {
             setSelectedVendors(vendors?.map(v => v.id) || []);
         }
+    };
+
+    const handleVendorClick = (vendorName: string, companyName: string) => {
+        // Replace placeholders in the email template
+        let updatedTemplate = emailTemplate;
+
+        // Replace {{vendor_name}} with actual vendor name
+        updatedTemplate = updatedTemplate.replace(/\{\{vendor_name\}\}/gi, vendorName);
+
+        // Replace {{company_name}} with actual company name
+        updatedTemplate = updatedTemplate.replace(/\{\{company_name\}\}/gi, companyName);
+
+        setEmailTemplate(updatedTemplate);
+        toast.success(`Email template updated with ${vendorName}'s information`);
     };
 
     const handleSendEmails = async () => {
@@ -288,6 +321,21 @@ export function SpaceDetailPage() {
                 name: v.name,
                 email: v.emails?.[0] || 'No email'
             }));
+    };
+
+    const getPersonalizedPreviewContent = (): string => {
+        if (!vendors || selectedVendors.length === 0) return emailTemplate;
+
+        // Get the first selected vendor for preview
+        const firstVendor = vendors.find(v => selectedVendors.includes(v.id));
+        if (!firstVendor) return emailTemplate;
+
+        // Personalize the template with the first vendor's info
+        let personalizedContent = emailTemplate;
+        personalizedContent = personalizedContent.replace(/\{\{vendor_name\}\}/gi, firstVendor.name);
+        personalizedContent = personalizedContent.replace(/\{\{company_name\}\}/gi, firstVendor.companyName || firstVendor.name);
+
+        return personalizedContent;
     };
 
     const sentCount = Object.values(emailStatuses).filter(s => s.sent).length;
@@ -456,7 +504,13 @@ export function SpaceDetailPage() {
                                                         onCheckedChange={() => toggleVendorSelection(vendor.id)}
                                                     />
                                                 </TableCell>
-                                                <TableCell className="font-medium">{vendor.name}</TableCell>
+                                                <TableCell
+                                                    className="font-medium cursor-pointer hover:text-blue-600 hover:underline transition-colors"
+                                                    onClick={() => handleVendorClick(vendor.name, vendor.companyName)}
+                                                    title="Click to update email template with this vendor's information"
+                                                >
+                                                    {vendor.name}
+                                                </TableCell>
                                                 <TableCell>{vendor.companyName}</TableCell>
                                                 <TableCell className="text-sm">{vendor.emails?.[0] || 'N/A'}</TableCell>
                                                 <TableCell className="text-sm">{vendor.phones?.[0] || 'N/A'}</TableCell>
@@ -531,7 +585,7 @@ export function SpaceDetailPage() {
                 open={showPreview}
                 onOpenChange={setShowPreview}
                 subject={`RFP - ${space.name}`}
-                content={emailTemplate}
+                content={getPersonalizedPreviewContent()}
                 recipients={getSelectedVendorsForPreview()}
                 onSend={handleSendEmails}
             />

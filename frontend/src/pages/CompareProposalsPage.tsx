@@ -1,432 +1,344 @@
-import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useParams, Link, useNavigate } from 'react-router-dom';
+import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/card';
+import { Button } from '../components/ui/button';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
+import { ArrowLeft, TrendingUp, TrendingDown, Award, AlertTriangle, MessageCircle } from 'lucide-react';
 import { toast } from 'sonner';
-import {
-    ArrowLeft,
-    TrendingUp,
-    TrendingDown,
-    Award,
-    CheckCircle,
-    XCircle,
-    DollarSign,
-    Calendar,
-    FileText,
-    Sparkles,
-    AlertCircle,
-    ThumbsUp,
-    ThumbsDown
-} from 'lucide-react';
-import { vendorProposalService, type VendorProposal } from '../services/vendor-proposal.service';
-import { spaceService } from '../services/space.service';
-import type { Space } from '../types';
+
+interface VendorScore {
+    vendorId: string;
+    vendorName: string;
+    scores: {
+        priceCompetitiveness: number;
+        termsQuality: number;
+        deliverySpeed: number;
+        completeness: number;
+        overallValue: number;
+    };
+    strengths: string[];
+    weaknesses: string[];
+}
+
+interface ComparisonData {
+    spaceId: string;
+    spaceName: string;
+    totalProposals: number;
+    proposals: any[];
+    comparison: {
+        summary: string;
+        vendorScores: VendorScore[];
+        priceComparison: {
+            lowestPrice: { vendorName: string; amount: number; currency: string };
+            highestPrice: { vendorName: string; amount: number; currency: string };
+            averagePrice: number;
+        };
+        recommendation: {
+            recommendedVendor: string;
+            reasoning: string;
+            alternativeOptions: string[];
+            riskFactors: string[];
+        };
+    };
+}
 
 export default function CompareProposalsPage() {
-    const { spaceId } = useParams<{ spaceId: string }>();
+    const { spaceId } = useParams();
     const navigate = useNavigate();
-
-    const [space, setSpace] = useState<Space | null>(null);
-    const [proposals, setProposals] = useState<VendorProposal[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [comparing, setComparing] = useState(false);
-    const [showRecommendations, setShowRecommendations] = useState(false);
-    const [selectedProposal, setSelectedProposal] = useState<VendorProposal | null>(null);
-    const [rejectReason, setRejectReason] = useState('');
-    const [showRejectModal, setShowRejectModal] = useState(false);
+    const [data, setData] = useState<ComparisonData | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        loadData();
+        loadComparison();
     }, [spaceId]);
 
-    const loadData = async () => {
-        if (!spaceId) return;
-
+    const loadComparison = async () => {
+        setIsLoading(true);
         try {
-            setLoading(true);
-            const [spaceData, proposalsData] = await Promise.all([
-                spaceService.getById(spaceId),
-                vendorProposalService.getProposalsBySpace(spaceId)
-            ]);
+            const token = localStorage.getItem('token');
+            const response = await fetch(`http://localhost:5000/api/spaces/${spaceId}/proposals/compare`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
 
-            setSpace(spaceData);
-            setProposals(proposalsData);
+            if (!response.ok) {
+                throw new Error('Failed to load comparison');
+            }
+
+            const result = await response.json();
+            setData(result);
         } catch (error) {
-            console.error('Error loading data:', error);
-            toast.error('Failed to load proposals');
+            toast.error('Failed to load proposal comparison');
+            console.error('Load comparison error:', error);
         } finally {
-            setLoading(false);
+            setIsLoading(false);
         }
     };
 
-    const handleCompare = async () => {
-        if (!spaceId) return;
-
-        try {
-            setComparing(true);
-            toast.loading('AI is analyzing and comparing proposals...');
-
-            const comparedProposals = await vendorProposalService.compareProposals(spaceId);
-
-            setProposals(comparedProposals);
-            setShowRecommendations(true);
-            toast.dismiss();
-            toast.success('AI comparison complete!');
-        } catch (error) {
-            console.error('Error comparing proposals:', error);
-            toast.dismiss();
-            toast.error('Failed to compare proposals');
-        } finally {
-            setComparing(false);
-        }
-    };
-
-    const handleAccept = async (proposal: VendorProposal) => {
-        if (!confirm(`Accept proposal from ${(proposal as any).vendorId?.name || 'this vendor'}?`)) {
-            return;
-        }
-
-        try {
-            toast.loading('Accepting proposal...');
-            await vendorProposalService.acceptProposal(proposal.id);
-            toast.dismiss();
-            toast.success('Proposal accepted! Notification email sent to vendor.');
-            loadData();
-        } catch (error) {
-            console.error('Error accepting proposal:', error);
-            toast.dismiss();
-            toast.error('Failed to accept proposal');
-        }
-    };
-
-    const handleReject = async () => {
-        if (!selectedProposal || !rejectReason.trim()) {
-            toast.error('Please provide a rejection reason');
-            return;
-        }
-
-        try {
-            toast.loading('Rejecting proposal...');
-            await vendorProposalService.rejectProposal(selectedProposal.id, rejectReason);
-            toast.dismiss();
-            toast.success('Proposal rejected. Notification email sent to vendor.');
-            setShowRejectModal(false);
-            setRejectReason('');
-            setSelectedProposal(null);
-            loadData();
-        } catch (error) {
-            console.error('Error rejecting proposal:', error);
-            toast.dismiss();
-            toast.error('Failed to reject proposal');
-        }
-    };
-
-    const openRejectModal = (proposal: VendorProposal) => {
-        setSelectedProposal(proposal);
-        setShowRejectModal(true);
-    };
-
-    if (loading) {
+    if (isLoading) {
         return (
-            <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex items-center justify-center">
+            <div className="flex items-center justify-center h-64">
                 <div className="text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
-                    <p className="mt-4 text-gray-600">Loading proposals...</p>
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+                    <p className="text-muted-foreground">Analyzing proposals with AI...</p>
                 </div>
             </div>
         );
     }
 
-    if (!space || proposals.length === 0) {
+    if (!data || !data.comparison) {
         return (
-            <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 p-6">
-                <div className="max-w-7xl mx-auto">
-                    <button
-                        onClick={() => navigate(-1)}
-                        className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6"
-                    >
-                        <ArrowLeft className="w-5 h-5" />
-                        Back
-                    </button>
-                    <div className="bg-white rounded-xl shadow-lg p-12 text-center">
-                        <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                        <h2 className="text-2xl font-bold text-gray-900 mb-2">No Proposals Yet</h2>
-                        <p className="text-gray-600">
-                            Vendor proposals will appear here once they reply to your RFP.
-                        </p>
-                    </div>
+            <div className="space-y-6">
+                <div className="flex items-center gap-4">
+                    <Link to={`/spaces/${spaceId}`}>
+                        <Button variant="outline" size="sm">
+                            <ArrowLeft className="w-4 h-4 mr-2" />
+                            Back to Space
+                        </Button>
+                    </Link>
+                    <h1 className="text-3xl font-bold">Proposal Comparison</h1>
                 </div>
+                <Card>
+                    <CardContent className="py-12 text-center">
+                        <p className="text-muted-foreground">No proposals available for comparison yet.</p>
+                        <p className="text-sm text-muted-foreground mt-2">
+                            Proposals will appear here once vendors respond to your RFP.
+                        </p>
+                    </CardContent>
+                </Card>
             </div>
         );
     }
+
+    const { comparison } = data;
+    const recommendedVendor = comparison.vendorScores.find(
+        v => v.vendorName === comparison.recommendation.recommendedVendor
+    );
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 p-6">
-            <div className="max-w-7xl mx-auto">
-                {/* Header */}
-                <div className="mb-8">
-                    <button
-                        onClick={() => navigate(-1)}
-                        className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
-                    >
-                        <ArrowLeft className="w-5 h-5" />
-                        Back
-                    </button>
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                                Compare Proposals
-                            </h1>
-                            <p className="text-gray-600">
-                                {space.name} • {proposals.length} {proposals.length === 1 ? 'Proposal' : 'Proposals'}
-                            </p>
-                        </div>
-                        <button
-                            onClick={handleCompare}
-                            disabled={comparing || proposals.length < 2}
-                            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:from-indigo-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl"
-                        >
-                            <Sparkles className="w-5 h-5" />
-                            {comparing ? 'Analyzing...' : 'Get AI Recommendations'}
-                        </button>
+        <div className="space-y-6">
+            {/* Header */}
+            <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                    <Link to={`/spaces/${spaceId}`}>
+                        <Button variant="outline" size="sm">
+                            <ArrowLeft className="w-4 h-4 mr-2" />
+                            Back
+                        </Button>
+                    </Link>
+                    <div>
+                        <h1 className="text-3xl font-bold">{data.spaceName} - Proposal Comparison</h1>
+                        <p className="text-muted-foreground">{data.totalProposals} proposals received</p>
                     </div>
                 </div>
-
-                {/* AI Recommendations Banner */}
-                {showRecommendations && proposals.some(p => p.aiRecommendation) && (
-                    <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-xl shadow-lg p-6 mb-8 text-white">
-                        <div className="flex items-start gap-4">
-                            <Sparkles className="w-8 h-8 flex-shrink-0 mt-1" />
-                            <div className="flex-1">
-                                <h2 className="text-2xl font-bold mb-2">AI Recommendations</h2>
-                                <p className="text-indigo-100 mb-4">
-                                    Based on comprehensive analysis of all proposals, here are our recommendations:
-                                </p>
-                                <div className="space-y-2">
-                                    {proposals
-                                        .filter(p => p.aiRecommendation?.isRecommended)
-                                        .map(p => (
-                                            <div key={p.id} className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
-                                                <div className="flex items-center gap-2 mb-2">
-                                                    <Award className="w-5 h-5 text-yellow-300" />
-                                                    <span className="font-semibold">
-                                                        Rank #{p.aiRecommendation?.rank}: {(p as any).vendorId?.name}
-                                                    </span>
-                                                </div>
-                                                <p className="text-sm text-indigo-100">
-                                                    {p.aiRecommendation?.reasoning}
-                                                </p>
-                                            </div>
-                                        ))}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {/* Proposals Grid */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-                    {proposals.map((proposal) => (
-                        <div
-                            key={proposal.id}
-                            className={`bg-white rounded-xl shadow-lg overflow-hidden transition-all hover:shadow-xl ${proposal.aiRecommendation?.isRecommended
-                                ? 'ring-2 ring-indigo-500'
-                                : ''
-                                }`}
-                        >
-                            {/* Header */}
-                            <div className="bg-gradient-to-r from-indigo-600 to-purple-600 p-6 text-white">
-                                <div className="flex items-start justify-between mb-4">
-                                    <div>
-                                        <h3 className="text-xl font-bold mb-1">
-                                            {(proposal as any).vendorId?.name || 'Unknown Vendor'}
-                                        </h3>
-                                        <p className="text-indigo-100 text-sm">
-                                            {(proposal as any).vendorId?.email}
-                                        </p>
-                                    </div>
-                                    {proposal.aiRecommendation?.isRecommended && (
-                                        <Award className="w-6 h-6 text-yellow-300" />
-                                    )}
-                                </div>
-
-                                {/* Overall Score */}
-                                <div className="flex items-center gap-4">
-                                    <div className="flex-1">
-                                        <div className="text-sm text-indigo-100 mb-1">Overall Score</div>
-                                        <div className="text-4xl font-bold">{proposal.overallScore}</div>
-                                    </div>
-                                    {proposal.aiRecommendation && (
-                                        <div className="text-right">
-                                            <div className="text-sm text-indigo-100 mb-1">AI Rank</div>
-                                            <div className="text-3xl font-bold">#{proposal.aiRecommendation.rank}</div>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* Content */}
-                            <div className="p-6 space-y-6">
-                                {/* AI Summary */}
-                                <div>
-                                    <h4 className="font-semibold text-gray-900 mb-2 flex items-center gap-2">
-                                        <Sparkles className="w-4 h-4 text-indigo-600" />
-                                        AI Summary
-                                    </h4>
-                                    <p className="text-sm text-gray-600">{proposal.aiSummary}</p>
-                                </div>
-
-                                {/* Strengths */}
-                                {proposal.strengths.length > 0 && (
-                                    <div>
-                                        <h4 className="font-semibold text-gray-900 mb-2 flex items-center gap-2">
-                                            <TrendingUp className="w-4 h-4 text-green-600" />
-                                            Strengths
-                                        </h4>
-                                        <ul className="space-y-1">
-                                            {proposal.strengths.map((strength, idx) => (
-                                                <li key={idx} className="text-sm text-gray-600 flex items-start gap-2">
-                                                    <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
-                                                    <span>{strength}</span>
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    </div>
-                                )}
-
-                                {/* Weaknesses */}
-                                {proposal.weaknesses.length > 0 && (
-                                    <div>
-                                        <h4 className="font-semibold text-gray-900 mb-2 flex items-center gap-2">
-                                            <TrendingDown className="w-4 h-4 text-red-600" />
-                                            Weaknesses
-                                        </h4>
-                                        <ul className="space-y-1">
-                                            {proposal.weaknesses.map((weakness, idx) => (
-                                                <li key={idx} className="text-sm text-gray-600 flex items-start gap-2">
-                                                    <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
-                                                    <span>{weakness}</span>
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    </div>
-                                )}
-
-                                {/* Key Details */}
-                                <div className="grid grid-cols-2 gap-4 pt-4 border-t">
-                                    {proposal.extractedData.pricing?.total && (
-                                        <div>
-                                            <div className="flex items-center gap-2 text-gray-600 mb-1">
-                                                <DollarSign className="w-4 h-4" />
-                                                <span className="text-xs font-medium">Price</span>
-                                            </div>
-                                            <div className="text-lg font-bold text-gray-900">
-                                                {proposal.extractedData.pricing.currency || '$'}
-                                                {proposal.extractedData.pricing.total.toLocaleString()}
-                                            </div>
-                                        </div>
-                                    )}
-                                    {proposal.extractedData.timeline?.deliveryDate && (
-                                        <div>
-                                            <div className="flex items-center gap-2 text-gray-600 mb-1">
-                                                <Calendar className="w-4 h-4" />
-                                                <span className="text-xs font-medium">Delivery</span>
-                                            </div>
-                                            <div className="text-sm font-semibold text-gray-900">
-                                                {proposal.extractedData.timeline.deliveryDate}
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-
-                                {/* AI Recommendation */}
-                                {proposal.aiRecommendation && (
-                                    <div className="bg-indigo-50 rounded-lg p-4">
-                                        <h4 className="font-semibold text-indigo-900 mb-2">AI Reasoning</h4>
-                                        <p className="text-sm text-indigo-700">
-                                            {proposal.aiRecommendation.reasoning}
-                                        </p>
-                                    </div>
-                                )}
-
-                                {/* Status Badge */}
-                                <div className="flex items-center gap-2">
-                                    {proposal.status === 'accepted' && (
-                                        <span className="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">
-                                            <CheckCircle className="w-4 h-4" />
-                                            Accepted
-                                        </span>
-                                    )}
-                                    {proposal.status === 'rejected' && (
-                                        <span className="inline-flex items-center gap-1 px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm font-medium">
-                                            <XCircle className="w-4 h-4" />
-                                            Rejected
-                                        </span>
-                                    )}
-                                </div>
-
-                                {/* Actions */}
-                                {proposal.status === 'analyzed' && (
-                                    <div className="flex gap-3 pt-4 border-t">
-                                        <button
-                                            onClick={() => handleAccept(proposal)}
-                                            className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-                                        >
-                                            <ThumbsUp className="w-4 h-4" />
-                                            Accept
-                                        </button>
-                                        <button
-                                            onClick={() => openRejectModal(proposal)}
-                                            className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-                                        >
-                                            <ThumbsDown className="w-4 h-4" />
-                                            Reject
-                                        </button>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    ))}
-                </div>
+                <Button onClick={loadComparison} variant="outline">
+                    Refresh Analysis
+                </Button>
             </div>
 
-            {/* Reject Modal */}
-            {showRejectModal && selectedProposal && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
-                        <h3 className="text-xl font-bold text-gray-900 mb-4">
-                            Reject Proposal
+            {/* AI Recommendation Card */}
+            <Card className="border-2 border-primary">
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                        <Award className="w-5 h-5 text-primary" />
+                        AI Recommendation
+                    </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div>
+                        <h3 className="text-lg font-semibold mb-2">
+                            Recommended Vendor: {comparison.recommendation.recommendedVendor}
                         </h3>
-                        <p className="text-gray-600 mb-4">
-                            Please provide a reason for rejecting this proposal. This will be sent to the vendor.
-                        </p>
-                        <textarea
-                            value={rejectReason}
-                            onChange={(e) => setRejectReason(e.target.value)}
-                            placeholder="Enter rejection reason..."
-                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none"
-                            rows={4}
-                        />
-                        <div className="flex gap-3 mt-6">
-                            <button
+                        <p className="text-muted-foreground mb-4">{comparison.recommendation.reasoning}</p>
+
+                        {/* Chat with Vendor Button */}
+                        {recommendedVendor && (
+                            <Button
                                 onClick={() => {
-                                    setShowRejectModal(false);
-                                    setRejectReason('');
-                                    setSelectedProposal(null);
+                                    // Navigate back to space detail page
+                                    // The vendor conversation will be opened via URL state or we can use localStorage
+                                    localStorage.setItem('openVendorChat', recommendedVendor.vendorId);
+                                    navigate(`/spaces/${spaceId}`);
+                                    toast.success(`Opening chat with ${comparison.recommendation.recommendedVendor}`);
                                 }}
-                                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                                className="w-full sm:w-auto"
                             >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={handleReject}
-                                disabled={!rejectReason.trim()}
-                                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                            >
-                                Reject & Send Email
-                            </button>
-                        </div>
+                                <MessageCircle className="w-4 h-4 mr-2" />
+                                Chat with Recommended Vendor
+                            </Button>
+                        )}
                     </div>
-                </div>
+
+                    {recommendedVendor && (
+                        <div className="grid grid-cols-5 gap-4 p-4 bg-muted rounded-lg">
+                            <div className="text-center">
+                                <div className="text-2xl font-bold text-primary">
+                                    {recommendedVendor.scores.overallValue}
+                                </div>
+                                <div className="text-xs text-muted-foreground">Overall Score</div>
+                            </div>
+                            <div className="text-center">
+                                <div className="text-lg font-semibold">{recommendedVendor.scores.priceCompetitiveness}</div>
+                                <div className="text-xs text-muted-foreground">Price</div>
+                            </div>
+                            <div className="text-center">
+                                <div className="text-lg font-semibold">{recommendedVendor.scores.termsQuality}</div>
+                                <div className="text-xs text-muted-foreground">Terms</div>
+                            </div>
+                            <div className="text-center">
+                                <div className="text-lg font-semibold">{recommendedVendor.scores.deliverySpeed}</div>
+                                <div className="text-xs text-muted-foreground">Delivery</div>
+                            </div>
+                            <div className="text-center">
+                                <div className="text-lg font-semibold">{recommendedVendor.scores.completeness}</div>
+                                <div className="text-xs text-muted-foreground">Completeness</div>
+                            </div>
+                        </div>
+                    )}
+
+                    {comparison.recommendation.alternativeOptions.length > 0 && (
+                        <div>
+                            <h4 className="font-medium mb-2">Alternative Options:</h4>
+                            <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
+                                {comparison.recommendation.alternativeOptions.map((option, idx) => (
+                                    <li key={idx}>{option}</li>
+                                ))}
+                            </ul>
+                        </div>
+                    )}
+
+                    {comparison.recommendation.riskFactors.length > 0 && (
+                        <div className="flex items-start gap-2 p-3 bg-yellow-50 dark:bg-yellow-950 rounded-md">
+                            <AlertTriangle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                            <div>
+                                <h4 className="font-medium text-yellow-900 dark:text-yellow-100 mb-1">Risk Factors:</h4>
+                                <ul className="list-disc list-inside space-y-1 text-sm text-yellow-800 dark:text-yellow-200">
+                                    {comparison.recommendation.riskFactors.map((risk, idx) => (
+                                        <li key={idx}>{risk}</li>
+                                    ))}
+                                </ul>
+                            </div>
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
+
+            {/* Summary */}
+            <Card>
+                <CardHeader>
+                    <CardTitle>Summary</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <p className="text-muted-foreground">{comparison.summary}</p>
+                </CardContent>
+            </Card>
+
+            {/* Price Comparison */}
+            {comparison.priceComparison && comparison.priceComparison.lowestPrice && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Price Comparison</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="grid grid-cols-3 gap-4">
+                            <div className="p-4 bg-green-50 dark:bg-green-950 rounded-lg">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <TrendingDown className="w-4 h-4 text-green-600" />
+                                    <span className="text-sm font-medium text-green-900 dark:text-green-100">Lowest Price</span>
+                                </div>
+                                <div className="text-2xl font-bold text-green-700 dark:text-green-300">
+                                    {comparison.priceComparison.lowestPrice.currency || '$'} {comparison.priceComparison.lowestPrice.amount?.toLocaleString() || 'N/A'}
+                                </div>
+                                <div className="text-sm text-green-600 dark:text-green-400">
+                                    {comparison.priceComparison.lowestPrice.vendorName}
+                                </div>
+                            </div>
+
+                            <div className="p-4 bg-blue-50 dark:bg-blue-950 rounded-lg">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <span className="text-sm font-medium text-blue-900 dark:text-blue-100">Average Price</span>
+                                </div>
+                                <div className="text-2xl font-bold text-blue-700 dark:text-blue-300">
+                                    {comparison.priceComparison.lowestPrice.currency || '$'} {comparison.priceComparison.averagePrice?.toLocaleString() || 'N/A'}
+                                </div>
+                            </div>
+
+                            {comparison.priceComparison.highestPrice && (
+                                <div className="p-4 bg-red-50 dark:bg-red-950 rounded-lg">
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <TrendingUp className="w-4 h-4 text-red-600" />
+                                        <span className="text-sm font-medium text-red-900 dark:text-red-100">Highest Price</span>
+                                    </div>
+                                    <div className="text-2xl font-bold text-red-700 dark:text-red-300">
+                                        {comparison.priceComparison.highestPrice.currency || '$'} {comparison.priceComparison.highestPrice.amount?.toLocaleString() || 'N/A'}
+                                    </div>
+                                    <div className="text-sm text-red-600 dark:text-red-400">
+                                        {comparison.priceComparison.highestPrice.vendorName}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </CardContent>
+                </Card>
             )}
+
+            {/* Vendor Scores Table */}
+            <Card>
+                <CardHeader>
+                    <CardTitle>Detailed Vendor Comparison</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Vendor</TableHead>
+                                <TableHead className="text-center">Overall</TableHead>
+                                <TableHead className="text-center">Price</TableHead>
+                                <TableHead className="text-center">Terms</TableHead>
+                                <TableHead className="text-center">Delivery</TableHead>
+                                <TableHead className="text-center">Completeness</TableHead>
+                                <TableHead>Strengths</TableHead>
+                                <TableHead>Weaknesses</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {comparison.vendorScores.map((vendor) => (
+                                <TableRow key={vendor.vendorId} className={vendor.vendorName === comparison.recommendation.recommendedVendor ? 'bg-primary/5' : ''}>
+                                    <TableCell className="font-medium">
+                                        {vendor.vendorName}
+                                        {vendor.vendorName === comparison.recommendation.recommendedVendor && (
+                                            <Award className="w-4 h-4 inline-block ml-2 text-primary" />
+                                        )}
+                                    </TableCell>
+                                    <TableCell className="text-center">
+                                        <div className="text-lg font-bold text-primary">{vendor.scores.overallValue}</div>
+                                    </TableCell>
+                                    <TableCell className="text-center">{vendor.scores.priceCompetitiveness}</TableCell>
+                                    <TableCell className="text-center">{vendor.scores.termsQuality}</TableCell>
+                                    <TableCell className="text-center">{vendor.scores.deliverySpeed}</TableCell>
+                                    <TableCell className="text-center">{vendor.scores.completeness}</TableCell>
+                                    <TableCell>
+                                        <ul className="text-xs space-y-1">
+                                            {vendor.strengths.slice(0, 2).map((s, idx) => (
+                                                <li key={idx} className="text-green-600">✓ {s}</li>
+                                            ))}
+                                        </ul>
+                                    </TableCell>
+                                    <TableCell>
+                                        <ul className="text-xs space-y-1">
+                                            {vendor.weaknesses.slice(0, 2).map((w, idx) => (
+                                                <li key={idx} className="text-red-600">✗ {w}</li>
+                                            ))}
+                                        </ul>
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </CardContent>
+            </Card>
         </div>
     );
 }

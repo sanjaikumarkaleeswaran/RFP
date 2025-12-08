@@ -25,6 +25,11 @@ export function EmailPreviewDialog({
                     <DialogTitle>Email Preview</DialogTitle>
                     <DialogDescription>
                         Review the email before sending to {recipients.length} vendor(s)
+                        {recipients.length > 1 && (
+                            <span className="block mt-1 text-xs text-blue-600">
+                                Note: Each vendor will receive a personalized version with their name and company
+                            </span>
+                        )}
                     </DialogDescription>
                 </DialogHeader>
 
