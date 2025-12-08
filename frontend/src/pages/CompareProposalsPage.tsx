@@ -157,9 +157,25 @@ export default function CompareProposalsPage() {
                         {recommendedVendor && (
                             <Button
                                 onClick={() => {
-                                    // Navigate back to space detail page
-                                    // The vendor conversation will be opened via URL state or we can use localStorage
+                                    // Generate professional acceptance message
+                                    const acceptanceMessage = `Dear ${comparison.recommendation.recommendedVendor},
+
+Thank you for your comprehensive proposal. After careful review and analysis, we are pleased to inform you that your proposal has been selected as the best fit for our requirements.
+
+Your proposal stood out due to:
+${recommendedVendor.strengths.slice(0, 3).map(s => `• ${s}`).join('\n')}
+
+We would like to proceed with the next steps and discuss the implementation details. Please let us know your availability for a meeting to finalize the terms and timeline.
+
+Looking forward to working with you.
+
+Best regards`;
+
+                                    // Save both vendor ID and acceptance message to localStorage
                                     localStorage.setItem('openVendorChat', recommendedVendor.vendorId);
+                                    localStorage.setItem('acceptanceMessage', acceptanceMessage);
+
+                                    // Navigate back to space detail page
                                     navigate(`/spaces/${spaceId}`);
                                     toast.success(`Opening chat with ${comparison.recommendation.recommendedVendor}`);
                                 }}

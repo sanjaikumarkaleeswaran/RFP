@@ -51,6 +51,7 @@ export function SpaceDetailPage() {
     const [showVendorMapModal, setShowVendorMapModal] = useState(false);
     const [selectedVendorForMap, setSelectedVendorForMap] = useState('');
     const [selectedVendorForConversation, setSelectedVendorForConversation] = useState<{ id: string; name: string; email: string } | null>(null);
+    const [initialReplyContent, setInitialReplyContent] = useState<string>('');
     const [showProposalManagement, setShowProposalManagement] = useState(false);
 
     // Update email template when space data changes
@@ -211,16 +212,25 @@ export function SpaceDetailPage() {
     // Auto-open vendor conversation if coming from Compare Proposals page
     useEffect(() => {
         const openVendorChatId = localStorage.getItem('openVendorChat');
+        const acceptanceMessage = localStorage.getItem('acceptanceMessage');
+
         if (openVendorChatId && vendors && vendors.length > 0) {
             // Find the vendor by ID
             const vendor = vendors.find(v => v.id === openVendorChatId);
             if (vendor) {
+                // Set the acceptance message if provided
+                if (acceptanceMessage) {
+                    setInitialReplyContent(acceptanceMessage);
+                    localStorage.removeItem('acceptanceMessage');
+                }
+
                 // Open the conversation dialog
                 setSelectedVendorForConversation({
                     id: vendor.id,
                     name: vendor.name,
                     email: vendor.emails?.[0] || ''
                 });
+
                 // Clear the localStorage flag
                 localStorage.removeItem('openVendorChat');
             }
@@ -726,11 +736,17 @@ export function SpaceDetailPage() {
             {selectedVendorForConversation && (
                 <VendorConversationDialog
                     open={!!selectedVendorForConversation}
-                    onOpenChange={(open) => !open && setSelectedVendorForConversation(null)}
+                    onOpenChange={(open) => {
+                        if (!open) {
+                            setSelectedVendorForConversation(null);
+                            setInitialReplyContent(''); // Clear the initial reply content
+                        }
+                    }}
                     vendorId={selectedVendorForConversation.id}
                     vendorName={selectedVendorForConversation.name}
                     vendorEmail={selectedVendorForConversation.email}
                     spaceId={space.id}
+                    initialReplyContent={initialReplyContent}
                 />
             )}
 

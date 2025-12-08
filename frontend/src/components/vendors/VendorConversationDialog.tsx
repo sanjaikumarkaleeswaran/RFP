@@ -13,6 +13,7 @@ interface VendorConversationDialogProps {
     vendorName: string;
     vendorEmail: string;
     spaceId?: string;
+    initialReplyContent?: string; // Pre-filled reply content (e.g., acceptance message)
 }
 
 export function VendorConversationDialog({
@@ -21,7 +22,8 @@ export function VendorConversationDialog({
     vendorId,
     vendorName,
     vendorEmail,
-    spaceId
+    spaceId,
+    initialReplyContent
 }: VendorConversationDialogProps) {
     const [emails, setEmails] = useState<Email[]>([]);
     const [loading, setLoading] = useState(false);
@@ -37,6 +39,14 @@ export function VendorConversationDialog({
             loadConversation();
         }
     }, [open, vendorId, spaceId]);
+
+    // Set initial reply content if provided
+    useEffect(() => {
+        if (open && initialReplyContent) {
+            setReplyContent(initialReplyContent);
+            setShowReply(true);
+        }
+    }, [open, initialReplyContent]);
 
     // Auto-refresh every 10 seconds
     useEffect(() => {
@@ -101,7 +111,7 @@ export function VendorConversationDialog({
     const handleDownloadAttachment = async (emailId: string, attachmentId: string, filename: string) => {
         try {
             const token = localStorage.getItem('accessToken');
-            
+
             const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
             const response = await fetch(`${API_BASE_URL}/emails/${emailId}/attachments/${attachmentId}/download`, {
                 headers: {
@@ -211,7 +221,7 @@ export function VendorConversationDialog({
                 direction: selectedEmail.direction
             });
 
-            // Send reply via Gmail API
+            // Send reply via Gmail API with vendor and space context
             const result = await emailService.sendViaGmail({
                 to: replyTo,
                 subject: selectedEmail.subject?.startsWith('Re:')
@@ -219,7 +229,9 @@ export function VendorConversationDialog({
                     : `Re: ${selectedEmail.subject || 'Your message'}`,
                 body: fullBody,
                 inReplyTo: messageIdForReply,
-                threadId: threadIdForReply
+                threadId: threadIdForReply,
+                vendorId: vendorId,
+                spaceId: spaceId
             });
 
             console.log('Reply sent result:', result);

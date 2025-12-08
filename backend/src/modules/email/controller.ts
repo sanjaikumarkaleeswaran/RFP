@@ -208,7 +208,7 @@ export const checkGmailReplies = async (req: Request, res: Response, next: NextF
  */
 export const sendViaGmail = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const { to, subject, text, html, spaceId, inReplyTo, threadId } = req.body;
+        const { to, subject, text, html, spaceId, vendorId, inReplyTo, threadId } = req.body;
         const userId = (req as any).user?.id;
         console.log({ user: req.user })
 
@@ -228,7 +228,8 @@ export const sendViaGmail = async (req: Request, res: Response, next: NextFuncti
             html,
             spaceId ? new mongoose.Types.ObjectId(spaceId) : undefined,
             inReplyTo,
-            threadId
+            threadId,
+            vendorId ? new mongoose.Types.ObjectId(vendorId) : undefined
         );
 
         res.json(result);

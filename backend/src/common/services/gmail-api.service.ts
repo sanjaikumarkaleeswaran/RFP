@@ -172,10 +172,11 @@ class GmailAPIService {
         html?: string,
         spaceId?: mongoose.Types.ObjectId,
         inReplyTo?: string,
-        threadIdParam?: string
+        threadIdParam?: string,
+        vendorId?: mongoose.Types.ObjectId
     ): Promise<{ success: boolean; messageId?: string; threadId?: string; error?: string }> {
         try {
-            console.log('📧 Sending email via Gmail API...', { userId, to, subject });
+            console.log('📧 Sending email via Gmail API...', { userId, to, subject, vendorId });
             const auth = await this.getAuthClientForUser(userId);
             const gmail = google.gmail({ version: 'v1', auth });
 
@@ -232,6 +233,7 @@ class GmailAPIService {
             const emailDoc = await Email.create({
                 userId,
                 spaceId,
+                vendorId, // Add vendorId here
                 from: {
                     email: tokenDoc?.email || 'unknown',
                     name: 'Me'
@@ -251,6 +253,7 @@ class GmailAPIService {
             } as any);
 
             console.log('✅ Email saved to database with ID:', (emailDoc as any)._id);
+            console.log('   Linked to vendor:', vendorId);
 
             return {
                 success: true,
