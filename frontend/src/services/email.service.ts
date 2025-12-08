@@ -86,6 +86,8 @@ export const emailService = {
         body: string;
         inReplyTo?: string;
         threadId?: string;
+        vendorId?: string;
+        spaceId?: string;
     }): Promise<any> => {
         // Send body as HTML to ensure it's saved to bodyHtml field
         return await fetchWrapper('POST', '/emails/gmail/send', {
@@ -93,7 +95,9 @@ export const emailService = {
             subject: emailData.subject,
             html: emailData.body,  // Send as HTML
             inReplyTo: emailData.inReplyTo,
-            threadId: emailData.threadId
+            threadId: emailData.threadId,
+            vendorId: emailData.vendorId,
+            spaceId: emailData.spaceId
         });
     },
 
