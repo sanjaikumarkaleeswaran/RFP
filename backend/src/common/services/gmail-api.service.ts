@@ -236,7 +236,7 @@ class GmailAPIService {
                 vendorId, // Add vendorId here
                 from: {
                     email: tokenDoc?.email || 'unknown',
-                    name: 'Me'
+                    name: 'Nova' // Changed from 'Me' to 'Nova'
                 },
                 to: [{ email: to }],
                 subject,
@@ -274,6 +274,7 @@ class GmailAPIService {
      */
     private createEmailMessage(to: string, subject: string, text?: string, html?: string, inReplyTo?: string): string {
         const messageParts = [
+            'From: Nova',  // Add sender name
             `To: ${to}`,
             `Subject: ${subject}`,
             'MIME-Version: 1.0',
