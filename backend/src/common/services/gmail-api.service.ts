@@ -448,6 +448,7 @@ class GmailAPIService {
             const emailDoc = await Email.create({
                 userId,
                 spaceId: originalEmail?.spaceId,
+                vendorId: originalEmail?.vendorId,  // Copy vendorId from original email
                 from: {
                     email: fromEmail,
                     name: from?.replace(/<.+>/, '').trim()

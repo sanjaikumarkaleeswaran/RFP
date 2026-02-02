@@ -167,4 +167,125 @@ export const refreshToken = async (userId: string) => {
     return { token };
 };
 
+/**
+ * Generate password reset token and send email
+ */
+export const forgotPassword = async (email: string) => {
+    // Normalize email
+    const normalizedEmail = email.toLowerCase().trim();
+
+    // Find user
+    const user = await User.findOne({ email: normalizedEmail });
+
+    if (!user) {
+        // Don't reveal if email exists or not (security best practice)
+        return {
+            message: 'If an account with that email exists, a password reset link has been sent.'
+        };
+    }
+
+    // Generate reset token (6-digit code)
+    const resetToken = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // Hash the token before saving
+    const salt = await bcrypt.genSalt(10);
+    const hashedToken = await bcrypt.hash(resetToken, salt);
+
+    // Save hashed token and expiry (15 minutes)
+    user.resetPasswordToken = hashedToken;
+    user.resetPasswordExpires = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+    await user.save();
+
+    // Send email with reset token
+    try {
+        const { smtpEmailService } = await import('../../common/services/smtp-email.service');
+
+        const emailHtml = `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <h2 style="color: #333;">Password Reset Request</h2>
+                <p>Hello ${user.name || 'there'},</p>
+                <p>You requested to reset your password for your Nova RFP account.</p>
+                <p>Your password reset code is:</p>
+                <div style="background-color: #f4f4f4; padding: 20px; text-align: center; font-size: 32px; font-weight: bold; letter-spacing: 5px; margin: 20px 0;">
+                    ${resetToken}
+                </div>
+                <p>This code will expire in <strong>15 minutes</strong>.</p>
+                <p>If you didn't request this, please ignore this email and your password will remain unchanged.</p>
+                <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
+                <p style="color: #666; font-size: 12px;">
+                    This is an automated email from Nova RFP System. Please do not reply to this email.
+                </p>
+            </div>
+        `;
+
+        await smtpEmailService.sendEmail({
+            to: user.email,
+            subject: 'Password Reset Code - Nova RFP',
+            html: emailHtml
+        });
+
+        console.log(`✅ Password reset email sent to: ${user.email}`);
+    } catch (error) {
+        console.error('❌ Failed to send password reset email:', error);
+        // Clear the reset token if email fails
+        user.resetPasswordToken = undefined;
+        user.resetPasswordExpires = undefined;
+        await user.save();
+        throw new AppError('Failed to send password reset email. Please try again later.', 500);
+    }
+
+    return {
+        message: 'If an account with that email exists, a password reset link has been sent.'
+    };
+};
+
+/**
+ * Reset password using token
+ */
+export const resetPassword = async (email: string, token: string, newPassword: string) => {
+    // Normalize email
+    const normalizedEmail = email.toLowerCase().trim();
+
+    // Find user with reset token
+    const user = await User.findOne({
+        email: normalizedEmail
+    }).select('+resetPasswordToken +resetPasswordExpires +passwordHash');
+
+    if (!user || !user.resetPasswordToken || !user.resetPasswordExpires) {
+        throw new AppError('Invalid or expired reset token', 400);
+    }
+
+    // Check if token is expired
+    if (user.resetPasswordExpires < new Date()) {
+        throw new AppError('Reset token has expired. Please request a new one.', 400);
+    }
+
+    // Verify token
+    const isTokenValid = await bcrypt.compare(token, user.resetPasswordToken);
+
+    if (!isTokenValid) {
+        throw new AppError('Invalid reset token', 400);
+    }
+
+    // Validate new password
+    if (newPassword.length < 6) {
+        throw new AppError('Password must be at least 6 characters long', 400);
+    }
+
+    // Hash new password
+    const salt = await bcrypt.genSalt(12);
+    const passwordHash = await bcrypt.hash(newPassword, salt);
+
+    // Update password and clear reset token
+    user.passwordHash = passwordHash;
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpires = undefined;
+    await user.save();
+
+    console.log(`✅ Password reset successful for: ${user.email}`);
+
+    return {
+        message: 'Password has been reset successfully. You can now login with your new password.'
+    };
+};
 

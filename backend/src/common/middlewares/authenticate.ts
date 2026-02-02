@@ -60,8 +60,12 @@ export const authenticate = async (
         // Verify token
         let decoded: JwtPayload;
         try {
+            console.log('🔐 Verifying token for route:', req.path);
+            console.log('🔑 Token preview:', token.substring(0, 30) + '...');
             decoded = jwt.verify(token, JWT_SECRET) as JwtPayload;
+            console.log('✅ Token verified successfully, user ID:', decoded.id);
         } catch (error) {
+            console.error('❌ Token verification failed:', error.message);
             if (error instanceof jwt.TokenExpiredError) {
                 return next(new AppError('Your session has expired. Please log in again.', 401));
             }
@@ -74,7 +78,7 @@ export const authenticate = async (
         // Check if user still exists
         const user = await User.findById(decoded.id).select('-passwordHash');
 
-        console.log({user})
+        console.log({ user })
 
         if (!user) {
             return next(

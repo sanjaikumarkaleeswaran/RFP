@@ -394,6 +394,13 @@ class GmailWatchService {
 
             console.log('✅ Reply saved to database!');
             console.log('  Reply ID:', replyEmail._id);
+            console.log('  Linked to Original Email ID:', originalEmail._id);
+
+            // 🔍 Debug: Check AI analysis trigger conditions
+            console.log('🔍 AI Analysis Check:');
+            console.log('   replyEmail.vendorId:', replyEmail.vendorId);
+            console.log('   replyEmail.spaceId:', replyEmail.spaceId);
+            console.log('   Condition met:', !!(replyEmail.vendorId && replyEmail.spaceId));
 
             // 🤖 AUTO-ANALYZE VENDOR PROPOSAL
             if (replyEmail.vendorId && replyEmail.spaceId) {

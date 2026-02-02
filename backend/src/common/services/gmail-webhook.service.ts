@@ -450,6 +450,37 @@ class GmailWebhookService {
                 });
 
                 console.log(`✅ Reply saved and linked to original email`);
+
+                // 🤖 AUTO-ANALYZE VENDOR PROPOSAL
+                // Get the saved reply to trigger AI analysis
+                const replyEmail = await Email.findOne({
+                    gmailMessageId: messageId,
+                    userId,
+                    direction: 'inbound'
+                }).sort({ createdAt: -1 });
+
+                if (replyEmail && replyEmail.vendorId && replyEmail.spaceId) {
+                    console.log('🤖 Triggering automatic vendor proposal analysis...');
+                    console.log('   Vendor ID:', replyEmail.vendorId);
+                    console.log('   Space ID:', replyEmail.spaceId);
+                    try {
+                        const { vendorProposalService } = await import('../../modules/vendor-proposal/service');
+                        const proposal = await vendorProposalService.analyzeVendorReply(replyEmail._id.toString());
+                        console.log('✅ Vendor proposal analysis completed!');
+                        console.log('   Score:', proposal.overallScore);
+                        console.log('   Personal Feedback:', proposal.personalFeedback?.substring(0, 100) + '...');
+                        console.log('   Status:', proposal.status);
+                    } catch (error) {
+                        console.error('❌ Failed to analyze vendor proposal:', error);
+                    }
+                } else {
+                    console.log('⚠️  Skipping AI analysis - missing vendorId or spaceId');
+                    if (replyEmail) {
+                        console.log('   vendorId:', replyEmail.vendorId);
+                        console.log('   spaceId:', replyEmail.spaceId);
+                    }
+                }
+
                 return true; // This was a reply to our sent email
             } else {
                 // This is an inbox message but NOT a reply to our emails - skip silently
@@ -550,6 +581,7 @@ class GmailWebhookService {
             const replyEmail = await Email.create({
                 userId,
                 spaceId: originalEmail.spaceId,
+                vendorId: originalEmail.vendorId, // ✅ CRITICAL: Copy vendorId for AI analysis
                 from: {
                     email: fromEmail,
                     name: fromName

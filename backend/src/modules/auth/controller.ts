@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { catchAsync } from '../../common/utils/catchAsync';
-import { register, login, getMe, changePassword, refreshToken } from './service';
+import { register, login, getMe, changePassword, refreshToken, forgotPassword, resetPassword } from './service';
 
 export const registerHandler = catchAsync(async (req: Request, res: Response) => {
     const { user, token } = await register(req.body);
@@ -78,6 +78,42 @@ export const refreshTokenHandler = catchAsync(async (req: Request, res: Response
     res.status(200).json({
         status: 'success',
         token,
+    });
+});
+
+export const forgotPasswordHandler = catchAsync(async (req: Request, res: Response) => {
+    const { email } = req.body;
+
+    if (!email) {
+        return res.status(400).json({
+            status: 'fail',
+            message: 'Email is required',
+        });
+    }
+
+    const result = await forgotPassword(email);
+
+    res.status(200).json({
+        status: 'success',
+        message: result.message,
+    });
+});
+
+export const resetPasswordHandler = catchAsync(async (req: Request, res: Response) => {
+    const { email, token, newPassword } = req.body;
+
+    if (!email || !token || !newPassword) {
+        return res.status(400).json({
+            status: 'fail',
+            message: 'Email, token, and new password are required',
+        });
+    }
+
+    const result = await resetPassword(email, token, newPassword);
+
+    res.status(200).json({
+        status: 'success',
+        message: result.message,
     });
 });
 

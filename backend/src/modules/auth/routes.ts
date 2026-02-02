@@ -9,6 +9,8 @@ import {
     getMeHandler,
     changePasswordHandler,
     refreshTokenHandler,
+    forgotPasswordHandler,
+    resetPasswordHandler,
 } from './controller';
 
 const router = Router();
@@ -16,6 +18,8 @@ const router = Router();
 // Public routes
 router.post('/register', validateResource(registerSchema), registerHandler);
 router.post('/login', validateResource(loginSchema), loginHandler);
+router.post('/forgot-password', forgotPasswordHandler);
+router.post('/reset-password', resetPasswordHandler);
 
 // Protected routes
 router.use(authenticate); // All routes below this require authentication

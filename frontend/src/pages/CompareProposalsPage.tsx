@@ -55,26 +55,111 @@ export default function CompareProposalsPage() {
     const loadComparison = async () => {
         setIsLoading(true);
         try {
-            const token = localStorage.getItem('token');
-            const response = await fetch(`http://localhost:5000/api/spaces/${spaceId}/proposals/compare`, {
+            const token = localStorage.getItem('accessToken'); // ✅ FIXED: Use correct key
+
+            console.log('🔍 Fetching proposals for space:', spaceId);
+
+            // ✅ NEW: Fetch AI-analyzed vendor proposals
+            const response = await fetch(`http://localhost:5000/api/vendor-proposals/space/${spaceId}`, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 }
             });
 
+            console.log('📡 Response status:', response.status);
+
             if (!response.ok) {
-                throw new Error('Failed to load comparison');
+                const errorText = await response.text();
+                console.error('❌ API Error:', errorText);
+
+                if (response.status === 401) {
+                    toast.error('Session expired. Please log in again.');
+                    // Optionally redirect to login
+                    // navigate('/login');
+                } else {
+                    toast.error('Failed to load proposal comparison');
+                }
+                throw new Error('Failed to load proposals');
             }
 
             const result = await response.json();
-            setData(result);
+            console.log('📊 API Result:', result);
+
+            // Transform vendor proposals to match the comparison format
+            if (result.proposals && result.proposals.length > 0) {
+                console.log('✅ Found', result.proposals.length, 'proposals');
+                const transformedData = transformProposalsToComparison(result.proposals);
+                setData(transformedData);
+            } else {
+                console.log('📭 No proposals found');
+                setData(null);
+            }
         } catch (error) {
+            console.error('❌ Error:', error);
             toast.error('Failed to load proposal comparison');
-            console.error('Load comparison error:', error);
         } finally {
             setIsLoading(false);
         }
+    };
+
+    // Transform vendor proposals to comparison format
+    const transformProposalsToComparison = (proposals: any[]): ComparisonData => {
+        console.log('🔄 Transforming proposals:', proposals);
+
+        const vendorScores: VendorScore[] = proposals.map(p => {
+            console.log('📊 Proposal data:', {
+                vendorName: p.vendorId_populated?.name || p.vendorId?.name,
+                overallScore: p.overallScore,
+                strengths: p.strengths,
+                weaknesses: p.weaknesses,
+                personalFeedback: p.personalFeedback
+            });
+
+            return {
+                vendorId: p.vendorId?._id || p.vendorId,
+                vendorName: p.vendorId_populated?.name || p.vendorId?.name || 'Unknown Vendor',
+                scores: {
+                    priceCompetitiveness: p.extractedData?.pricing?.total ? 80 : 60,
+                    termsQuality: p.extractedData?.terms ? 75 : 65,
+                    deliverySpeed: p.extractedData?.timeline ? 70 : 60,
+                    completeness: p.overallScore || 70,
+                    overallValue: p.overallScore || 70
+                },
+                strengths: p.strengths || ['Proposal submitted'],
+                weaknesses: p.weaknesses || []
+            };
+        });
+
+        // Find highest scoring vendor
+        const topVendor = vendorScores.reduce((prev, current) =>
+            (current.scores.overallValue > prev.scores.overallValue) ? current : prev
+        );
+
+        return {
+            spaceId: spaceId || '',
+            spaceName: 'AI Test - Website Redesign',
+            totalProposals: proposals.length,
+            proposals: proposals,
+            comparison: {
+                summary: `Received ${proposals.length} AI-analyzed proposal(s). The proposals have been automatically analyzed using AI to evaluate pricing, terms, delivery timelines, and overall quality.`,
+                vendorScores,
+                priceComparison: {
+                    lowestPrice: { vendorName: topVendor.vendorName, amount: 0, currency: 'USD' },
+                    highestPrice: { vendorName: topVendor.vendorName, amount: 0, currency: 'USD' },
+                    averagePrice: 0
+                },
+                recommendation: {
+                    recommendedVendor: topVendor.vendorName,
+                    reasoning: proposals.find(p => (p.vendorId_populated?.name || p.vendorId?.name) === topVendor.vendorName)?.personalFeedback || 'This vendor has the highest overall score based on AI analysis.',
+                    alternativeOptions: vendorScores
+                        .filter(v => v.vendorName !== topVendor.vendorName)
+                        .slice(0, 2)
+                        .map(v => `${v.vendorName} (Score: ${v.scores.overallValue})`),
+                    riskFactors: []
+                }
+            }
+        };
     };
 
     if (isLoading) {

@@ -17,11 +17,13 @@ interface SendEmailParams {
     attachments?: EmailAttachment[];
     userId?: mongoose.Types.ObjectId;
     spaceId?: mongoose.Types.ObjectId;
+    vendorId?: mongoose.Types.ObjectId;  // Added for vendor tracking
 }
 
 interface EmailResult {
     success: boolean;
     messageId?: string;
+    emailId?: string;  // Added for compatibility
     error?: string;
     recipient: string;
 }
@@ -47,7 +49,7 @@ class SMTPEmailService {
         // Check if Gmail SMTP is configured
         const useGmailSMTP = process.env.USE_GMAIL_SMTP === 'true';
 
-        console.log({useGmailSMTP, smtpUser, smtpPass, smtpHost, smtpPort})
+        console.log({ useGmailSMTP, smtpUser, smtpPass, smtpHost, smtpPort })
 
         if (useGmailSMTP && smtpUser && smtpPass) {
             // Gmail SMTP configuration
@@ -126,8 +128,9 @@ class SMTPEmailService {
             console.log('   Message ID:', info.messageId);
 
             // Save to database
+            let savedEmail = null;
             if (params.userId) {
-                await this.saveEmailToDatabase({
+                savedEmail = await this.saveEmailToDatabase({
                     ...params,
                     to: recipient,
                     messageId: info.messageId,
@@ -138,6 +141,7 @@ class SMTPEmailService {
             return {
                 success: true,
                 messageId: info.messageId,
+                emailId: savedEmail?._id?.toString(),
                 recipient
             };
         } catch (error) {
@@ -231,6 +235,7 @@ class SMTPEmailService {
         error?: string;
         userId?: mongoose.Types.ObjectId;
         spaceId?: mongoose.Types.ObjectId;
+        vendorId?: mongoose.Types.ObjectId;  // Added for vendor tracking
     }): Promise<IEmail | null> {
         try {
             if (!params.userId) return null;
@@ -238,6 +243,7 @@ class SMTPEmailService {
             const email = await Email.create({
                 userId: params.userId,
                 spaceId: params.spaceId,
+                vendorId: params.vendorId,  // Added for vendor tracking
                 from: {
                     email: this.fromEmail,
                     name: this.fromName

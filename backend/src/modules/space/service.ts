@@ -153,18 +153,18 @@ export class SpaceService {
                 // Replace {{company_name}} with actual company name
                 personalizedContent = personalizedContent.replace(/\{\{company_name\}\}/gi, vendor.companyName || vendor.name);
 
-                // Send email using Gmail API (NOT SMTP) so webhook can track replies
-                const { gmailAPIService } = await import('../../common/services/gmail-api.service');
+                // Send email using SMTP (old reliable way - no OAuth needed!)
+                const { smtpEmailService } = await import('../../common/services/smtp-email.service');
                 const mongoose = await import('mongoose');
 
-                const emailResult = await gmailAPIService.sendEmail(
-                    space.ownerId || new mongoose.Types.ObjectId(userId),
-                    vendorEmail,
-                    `RFP - ${space.name}`,
-                    undefined, // text
-                    personalizedContent, // html - now personalized
-                    space._id // spaceId
-                );
+                const emailResult = await smtpEmailService.sendEmail({
+                    to: vendorEmail,
+                    subject: `RFP - ${space.name}`,
+                    html: personalizedContent,
+                    userId: space.ownerId || new mongoose.Types.ObjectId(userId),
+                    spaceId: space._id,
+                    vendorId: new mongoose.Types.ObjectId(vendorId)
+                });
 
                 if (emailResult.success) {
                     console.log(`✅ Email sent successfully to ${vendor.name} (${vendorEmail})`);
@@ -174,7 +174,7 @@ export class SpaceService {
                         vendorEmail: vendorEmail,
                         status: 'sent',
                         sentAt: new Date(),
-                        emailId: emailResult.messageId
+                        emailId: emailResult.emailId
                     });
                 } else {
                     console.error(`❌ Failed to send email to ${vendorEmail}:`, emailResult.error);

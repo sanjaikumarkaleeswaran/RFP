@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import * as emailController from './controller';
+import { fixInboundVendorIds } from './fix-vendor-ids.controller';
 import { authenticate } from '../../common/middlewares/authenticate';
 
 const router = Router();
@@ -57,6 +58,8 @@ router.patch('/:id/mark-read', authenticate, emailController.markEmailAsRead);
 
 // ==================== DEBUG ROUTES ====================
 router.get('/debug/sent', authenticate, emailController.debugSentEmails);
+// TODO: Fix this route - causing "Route handler must be a function" error
+// router.post('/fix-vendor-ids', authenticate, fixInboundVendorIds); // Fix missing vendorIds
 
 // ==================== ATTACHMENT ROUTES ====================
 router.get('/:emailId/attachments/:attachmentId/download', authenticate, emailController.downloadAttachment);

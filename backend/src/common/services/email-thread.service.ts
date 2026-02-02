@@ -144,6 +144,7 @@ class EmailThreadService {
             originalEmailId: originalEmail._id,
             isReply: true,
             spaceId: originalEmail.spaceId, // Inherit spaceId from original
+            vendorId: originalEmail.vendorId, // ✅ CRITICAL: Inherit vendorId for AI analysis
             userId: originalEmail.userId // Inherit userId from original
         });
 

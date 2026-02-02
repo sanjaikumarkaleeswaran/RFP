@@ -6,6 +6,8 @@ export interface IUser extends Document {
     name?: string;
     createdAt: Date;
     updatedAt: Date;
+    resetPasswordToken?: string;
+    resetPasswordExpires?: Date;
     gmail?: {
         googleId: string;
         accessToken: string;
@@ -32,6 +34,14 @@ const UserSchema: Schema = new Schema({
     name: {
         type: String,
         trim: true,
+    },
+    resetPasswordToken: {
+        type: String,
+        select: false, // Don't include in queries by default
+    },
+    resetPasswordExpires: {
+        type: Date,
+        select: false, // Don't include in queries by default
     },
     gmail: {
         googleId: String,
