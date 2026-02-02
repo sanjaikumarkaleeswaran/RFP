@@ -1,6 +1,29 @@
 node_modules
 
+# Environment variables (CRITICAL - NEVER COMMIT!)
 .env
+.env.local
+.env.*.local
+.env.production
+.env.development
+
+# Sensitive documentation files
+*_FIX.md
+*_CREDENTIALS.md
+*SECRET*.md
+*PASSWORD*.md
+SMTP_EMAIL_FIX.md
+SECURITY_REMEDIATION_PLAN.md
+SECURITY_INCIDENT_SUMMARY.md
+CREDENTIAL_ROTATION_GUIDE.md
+GIT_CLEANUP_GUIDE.md
+cleanup-git-history.ps1
+*.md
+# API keys and credentials
+*.key
+*.pem
+credentials.json
+service-account.json
 
 PROJECT_SPEC.md
 USER_STORIES.md
