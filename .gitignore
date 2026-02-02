@@ -27,7 +27,7 @@ service-account.json
 
 PROJECT_SPEC.md
 USER_STORIES.md
-
+.agent
 # Frontend
 
 /frontend/node_modules
