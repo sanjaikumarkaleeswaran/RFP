@@ -39,3 +39,8 @@ USER_STORIES.md
 # Backend
 
 /backend/node_modules
+
+
+package-lock.json
+package.json
+.env.example
