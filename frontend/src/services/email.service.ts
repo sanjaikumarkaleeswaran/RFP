@@ -1,5 +1,6 @@
 import { fetchWrapper } from '../shared/utils/fetchWrapper';
 import type { Email } from '../types';
+export type { Email };
 
 export const emailService = {
     // Get Gmail inbox from Gmail API

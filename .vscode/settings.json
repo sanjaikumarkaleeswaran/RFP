@@ -1,0 +1,6 @@
+{
+  "files.exclude": {
+    "**/*.md": true,
+    "**/.agent": true
+  }
+}

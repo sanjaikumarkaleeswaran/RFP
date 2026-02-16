@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { API_BASE_URL } from '@/config';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
 import { Mail, MailOpen, Reply, RefreshCw } from 'lucide-react';
 import { Button } from '../ui/button';
@@ -112,7 +113,7 @@ export function VendorConversationDialog({
         try {
             const token = localStorage.getItem('accessToken');
 
-            const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
             const response = await fetch(`${API_BASE_URL}/emails/${emailId}/attachments/${attachmentId}/download`, {
                 headers: {
                     'Authorization': `Bearer ${token}`
@@ -143,7 +144,7 @@ export function VendorConversationDialog({
     const handlePreviewAttachment = async (emailId: string, attachmentId: string, filename: string, mimeType: string) => {
         try {
             const token = localStorage.getItem('accessToken');
-            const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
             const response = await fetch(`${API_BASE_URL}/emails/${emailId}/attachments/${attachmentId}/download`, {
                 headers: {
                     'Authorization': `Bearer ${token}`

@@ -1,5 +1,6 @@
 import { useSpace, useSpaceActions, useSpaceVendors } from '@/hooks';
 import { useState, useEffect } from 'react';
+import { API_BASE_URL } from '@/config';
 import { useParams, Link } from 'react-router-dom';
 import type { Email, VendorEmailStatus } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -134,7 +135,7 @@ export function SpaceDetailPage() {
                     });
 
                     // Fetch actual statuses from backend
-                    const response = await fetch(`http://localhost:5000/api/spaces/${space.id}/email-statuses`);
+                    const response = await fetch(`${API_BASE_URL}/spaces/${space.id}/email-statuses`);
                     if (response.ok) {
                         const data = await response.json();
 

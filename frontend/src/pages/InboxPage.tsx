@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { API_BASE_URL } from '@/config';
 import { toast } from 'sonner';
 import {
     Mail,
@@ -186,7 +187,7 @@ export function InboxPage() {
     const handleDownloadAttachment = async (emailId: string, attachmentId: string, filename: string) => {
         try {
             const token = localStorage.getItem('accessToken');
-            const response = await fetch(`http://localhost:5000/api/emails/${emailId}/attachments/${attachmentId}/download`, {
+            const response = await fetch(`${API_BASE_URL}/emails/${emailId}/attachments/${attachmentId}/download`, {
                 headers: {
                     'Authorization': `Bearer ${token}`
                 }
@@ -214,7 +215,7 @@ export function InboxPage() {
     const handlePreviewAttachment = async (emailId: string, attachmentId: string) => {
         try {
             const token = localStorage.getItem('accessToken');
-            const response = await fetch(`http://localhost:5000/api/emails/${emailId}/attachments/${attachmentId}/preview`, {
+            const response = await fetch(`${API_BASE_URL}/emails/${emailId}/attachments/${attachmentId}/preview`, {
                 headers: {
                     'Authorization': `Bearer ${token}`
                 }
@@ -498,7 +499,7 @@ export function InboxPage() {
                                 <option value="">-- Select a Vendor --</option>
                                 {vendors.map((vendor) => (
                                     <option key={vendor.id} value={vendor.id}>
-                                        {vendor.name} ({vendor.email})
+                                        {vendor.name} ({vendor.emails?.[0]})
                                     </option>
                                 ))}
                             </select>

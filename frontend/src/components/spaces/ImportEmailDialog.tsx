@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { API_BASE_URL } from '@/config';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../ui/dialog';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -37,7 +38,7 @@ export function ImportEmailDialog({
 
         setIsImporting(true);
         try {
-            const response = await fetch(`http://localhost:5000/api/spaces/${spaceId}/import-email`, {
+            const response = await fetch(`${API_BASE_URL}/spaces/${spaceId}/import-email`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
