@@ -6,17 +6,6 @@
 import React from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/card';
 import { Badge } from '../ui/badge';
-
-// Inline progress bar — the shadcn Progress component is not installed
-const Progress = ({ value, className }: { value: number; className?: string }) => (
-    <div className={`w-full bg-gray-200 rounded-full overflow-hidden ${className ?? ''}`}>
-        <div
-            className="h-full bg-blue-500 rounded-full transition-all"
-            style={{ width: `${Math.min(100, Math.max(0, value))}%` }}
-        />
-    </div>
-);
-
 import {
     TrendingUp,
     TrendingDown,
@@ -31,6 +20,17 @@ import {
     Shield,
     Zap
 } from 'lucide-react';
+
+// Inline progress bar — the shadcn Progress component is not installed
+const Progress = ({ value, className }: { value: number; className?: string }) => (
+    <div className={`w-full bg-gray-200 rounded-full overflow-hidden ${className ?? ''}`}>
+        <div
+            className="h-full bg-blue-500 rounded-full transition-all"
+            style={{ width: `${Math.min(100, Math.max(0, value))}%` }}
+        />
+    </div>
+);
+
 
 interface AIAnalysisDisplayProps {
     proposal: any;
