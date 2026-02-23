@@ -2,16 +2,21 @@ import { useState } from "react";
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";
 
-export function EditableJSON({ data, onChange }) {
-    const [local, setLocal] = useState(data);
+interface EditableJSONProps {
+    data: Record<string, unknown>;
+    onChange: (updated: Record<string, unknown>) => void;
+}
 
-    const updateField = (key, value) => {
+export function EditableJSON({ data, onChange }: EditableJSONProps) {
+    const [local, setLocal] = useState<Record<string, unknown>>(data);
+
+    const updateField = (key: string, value: string) => {
         const updated = { ...local, [key]: value };
         setLocal(updated);
         onChange(updated);
     };
 
-    const deleteField = (key) => {
+    const deleteField = (key: string) => {
         const updated = { ...local };
         delete updated[key];
         setLocal(updated);
@@ -38,7 +43,7 @@ export function EditableJSON({ data, onChange }) {
                     />
 
                     <Input
-                        value={value}
+                        value={value as string}
                         onChange={(e) => updateField(key, e.target.value)}
                         className="flex-1"
                     />

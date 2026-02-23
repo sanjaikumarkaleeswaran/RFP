@@ -6,7 +6,17 @@
 import React from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/card';
 import { Badge } from '../ui/badge';
-import { Progress } from '../ui/progress';
+
+// Inline progress bar — the shadcn Progress component is not installed
+const Progress = ({ value, className }: { value: number; className?: string }) => (
+    <div className={`w-full bg-gray-200 rounded-full overflow-hidden ${className ?? ''}`}>
+        <div
+            className="h-full bg-blue-500 rounded-full transition-all"
+            style={{ width: `${Math.min(100, Math.max(0, value))}%` }}
+        />
+    </div>
+);
+
 import {
     TrendingUp,
     TrendingDown,
@@ -325,8 +335,8 @@ export const AIAnalysisDisplay: React.FC<AIAnalysisDisplayProps> = ({
             {/* AI Recommendation */}
             {proposal.aiRecommendation && (
                 <Card className={`border-2 ${proposal.aiRecommendation.isRecommended
-                        ? 'border-green-500 bg-green-50/50'
-                        : 'border-gray-300'
+                    ? 'border-green-500 bg-green-50/50'
+                    : 'border-gray-300'
                     }`}>
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2">

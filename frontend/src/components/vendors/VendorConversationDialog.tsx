@@ -141,7 +141,7 @@ export function VendorConversationDialog({
         }
     };
 
-    const handlePreviewAttachment = async (emailId: string, attachmentId: string, filename: string, mimeType: string) => {
+    const handlePreviewAttachment = async (emailId: string, attachmentId: string, _filename: string, _mimeType: string) => {
         try {
             const token = localStorage.getItem('accessToken');
 

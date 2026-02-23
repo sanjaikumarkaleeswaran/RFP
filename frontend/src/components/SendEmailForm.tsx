@@ -13,7 +13,8 @@ export const SendEmailForm: React.FC<SendEmailFormProps> = ({
     onSuccess,
     defaultTo = '',
     defaultSubject = '',
-    spaceId
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    spaceId: _spaceId
 }) => {
     const { sendEmail } = useEmail();
     const [formData, setFormData] = useState({
@@ -33,7 +34,7 @@ export const SendEmailForm: React.FC<SendEmailFormProps> = ({
             {
                 to: formData.to,
                 subject: formData.subject,
-                text: formData.message,
+                body: formData.message,
                 html: formData.message.replace(/\n/g, '<br>')
             },
             {

@@ -56,7 +56,7 @@ export function ImportEmailDialog({
                 throw new Error('Failed to import email');
             }
 
-            const result = await response.json();
+            await response.json();
             toast.success('Email imported and proposal created successfully!');
 
             // Reset form
