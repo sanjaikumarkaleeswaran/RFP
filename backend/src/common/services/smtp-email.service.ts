@@ -128,7 +128,7 @@ class SMTPEmailService {
             console.log('   Message ID:', info.messageId);
 
             // Save to database
-            let savedEmail = null;
+            let savedEmail: IEmail | null = null;
             if (params.userId) {
                 savedEmail = await this.saveEmailToDatabase({
                     ...params,

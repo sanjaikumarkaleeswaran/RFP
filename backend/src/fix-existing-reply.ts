@@ -29,9 +29,11 @@ async function fixExistingReplies() {
         console.log(`\n📧 Found ${repliesWithoutVendor.length} reply emails without vendorId\n`);
 
         let fixed = 0;
-        for (const reply of repliesWithoutVendor) {
+        for (const replyDoc of repliesWithoutVendor) {
+            const reply = replyDoc as any;
             // Get the original email
-            const originalEmail = await Email.findById(reply.originalEmailId);
+            const originalEmailDoc = await Email.findById(reply.originalEmailId);
+            const originalEmail = originalEmailDoc as any;
 
             if (originalEmail && originalEmail.vendorId) {
                 // Update the reply with vendorId

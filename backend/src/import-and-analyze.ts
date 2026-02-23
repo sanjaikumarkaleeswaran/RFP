@@ -74,7 +74,7 @@ async function importAndAnalyze() {
                 // (Simplified body extraction for brevity, assuming text/plain exists or snippet)
                 bodyPlain = d.data.snippet || 'Body content';
 
-                emailDoc = await Email.create({
+                emailDoc = (await Email.create({
                     userId: tokenDoc.userId,
                     gmailMessageId: msg.id,
                     messageId,
@@ -90,11 +90,12 @@ async function importAndAnalyze() {
                     deliveryStatus: 'received',
                     receivedAt: new Date(parseInt(d.data.internalDate || Date.now().toString())),
                     processed: true
-                } as any);
-                console.log(`✅ Created Email doc: ${emailDoc._id}`);
+                } as any)) as unknown as typeof emailDoc;
+                console.log(`✅ Created Email doc: ${emailDoc!._id}`);
             }
 
             // 3. Link Vendor and Space
+            if (!emailDoc) continue;
             let needsSave = false;
 
             // Link Space logic
@@ -141,11 +142,9 @@ async function importAndAnalyze() {
                 try {
                     const proposal = await vendorProposalService.analyzeVendorReply(emailDoc._id.toString());
                     console.log('✅ Analysis Complete!');
-                    console.log(`   Proposal ID: ${proposal.id}`);
+                    console.log(`   Proposal ID: ${proposal._id}`);
                     console.log(`   Score: ${proposal.overallScore}`);
                 } catch (err) {
-                    // Check if it's "Proposal already exists" error? 
-                    // analyzeVendorReply updates existing, so it shouldn't error.
                     console.error('❌ Analysis failed:', err);
                 }
             } else {

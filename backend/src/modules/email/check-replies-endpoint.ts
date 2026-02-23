@@ -1,6 +1,10 @@
 /**
  * POST /emails/check-replies - Manually check for new replies from Gmail
  */
+import { Request, Response, NextFunction } from 'express';
+import mongoose from 'mongoose';
+import { AppError } from '../../common/utils/AppError';
+
 export const checkForReplies = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const userId = (req as any).user?.id;

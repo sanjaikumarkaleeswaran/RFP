@@ -8,7 +8,48 @@
  * 2. Run: npx ts-node test-gmail-webhook.ts
  */
 
-import axios from 'axios';
+import https from 'https';
+import http from 'http';
+
+// Simple fetch helper using built-in http/https (no axios needed)
+function makeRequest(method: string, url: string, data?: any, headers?: Record<string, string>): Promise<{ status: number; data: any }> {
+    return new Promise((resolve, reject) => {
+        const parsed = new URL(url);
+        const isHttps = parsed.protocol === 'https:';
+        const lib = isHttps ? https : http;
+        const body = data ? JSON.stringify(data) : undefined;
+        const req = lib.request({
+            hostname: parsed.hostname,
+            port: parsed.port || (isHttps ? 443 : 80),
+            path: parsed.pathname + parsed.search,
+            method,
+            headers: {
+                'Content-Type': 'application/json',
+                ...(body ? { 'Content-Length': Buffer.byteLength(body).toString() } : {}),
+                ...headers
+            }
+        }, (res) => {
+            let raw = '';
+            res.on('data', (chunk) => raw += chunk);
+            res.on('end', () => {
+                try { resolve({ status: res.statusCode || 0, data: JSON.parse(raw) }); }
+                catch { resolve({ status: res.statusCode || 0, data: raw }); }
+            });
+        });
+        req.on('error', reject);
+        if (body) req.write(body);
+        req.end();
+    });
+}
+
+// Axios-compatible shim
+const axios = {
+    get: (url: string, config?: { headers?: Record<string, string>; timeout?: number }) =>
+        makeRequest('GET', url, undefined, config?.headers),
+    post: (url: string, data?: any, config?: { headers?: Record<string, string>; timeout?: number }) =>
+        makeRequest('POST', url, data, config?.headers),
+};
+
 
 const BASE_URL = 'http://localhost:5000';
 const AUTH_TOKEN = process.env.AUTH_TOKEN || '';

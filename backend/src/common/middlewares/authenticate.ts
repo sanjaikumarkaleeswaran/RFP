@@ -65,7 +65,7 @@ export const authenticate = async (
             decoded = jwt.verify(token, JWT_SECRET) as JwtPayload;
             console.log('✅ Token verified successfully, user ID:', decoded.id);
         } catch (error) {
-            console.error('❌ Token verification failed:', error.message);
+            console.error('❌ Token verification failed:', (error as Error).message);
             if (error instanceof jwt.TokenExpiredError) {
                 return next(new AppError('Your session has expired. Please log in again.', 401));
             }
