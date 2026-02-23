@@ -14,11 +14,9 @@ import {
     Mail,
     MailCheck,
     Inbox,
-    FileText,
     Upload,
     BarChart3,
-    X,
-    RefreshCw
+    X
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { emailService } from '@/services/email.service';
@@ -53,7 +51,7 @@ export function SpaceDetailPage() {
     const [selectedVendorForMap, setSelectedVendorForMap] = useState('');
     const [selectedVendorForConversation, setSelectedVendorForConversation] = useState<{ id: string; name: string; email: string } | null>(null);
     const [initialReplyContent, setInitialReplyContent] = useState<string>('');
-    const [showProposalManagement, setShowProposalManagement] = useState(false);
+
 
     // Update email template when space data changes
     useEffect(() => {
@@ -373,10 +371,7 @@ export function SpaceDetailPage() {
                     </div>
                 </div>
                 <div className="flex gap-2">
-                    <Button variant="outline" onClick={() => setShowProposalManagement(true)}>
-                        <FileText className="w-4 h-4 mr-2" />
-                        Manage Proposals
-                    </Button>
+
                     <Button variant="outline" onClick={() => setShowImportDialog(true)}>
                         <Upload className="w-4 h-4 mr-2" />
                         Import Email

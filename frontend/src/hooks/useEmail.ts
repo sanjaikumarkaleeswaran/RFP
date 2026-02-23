@@ -8,7 +8,7 @@ export function useEmail() {
     // Send single email via SMTP
     const sendEmail = useMutation({
         mutationFn: (data: SendEmailRequest) => emailService.sendEmail(data),
-        onSuccess: (data) => {
+        onSuccess: (data: any) => {
             if (data.success) {
                 toast.success(`Email sent successfully to ${data.recipient}`);
                 queryClient.invalidateQueries({ queryKey: ['sent-emails'] });
@@ -24,7 +24,7 @@ export function useEmail() {
     // Send bulk emails via SMTP
     const sendBulkEmails = useMutation({
         mutationFn: (data: BulkEmailRequest) => emailService.sendBulkEmails(data),
-        onSuccess: (data) => {
+        onSuccess: (data: any) => {
             if (data.success) {
                 toast.success(`Sent ${data.sent} of ${data.total} emails successfully`);
                 if (data.failed > 0) {
@@ -41,7 +41,7 @@ export function useEmail() {
     // Send email via Gmail API
     const sendViaGmail = useMutation({
         mutationFn: (data: SendEmailRequest & { spaceId?: string }) => emailService.sendViaGmail(data),
-        onSuccess: (data) => {
+        onSuccess: (data: any) => {
             if (data.success) {
                 toast.success(`Email sent via Gmail to ${data.recipient}`);
                 queryClient.invalidateQueries({ queryKey: ['sent-emails'] });
@@ -57,7 +57,7 @@ export function useEmail() {
     // Check for new Gmail replies
     const checkReplies = useMutation({
         mutationFn: () => emailService.checkGmailReplies(),
-        onSuccess: (data) => {
+        onSuccess: (data: any) => {
             if (data.success) {
                 if (data.count > 0) {
                     toast.success(`Found ${data.count} new ${data.count === 1 ? 'reply' : 'replies'}`);

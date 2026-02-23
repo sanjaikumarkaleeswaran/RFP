@@ -2,6 +2,24 @@ import { fetchWrapper } from '../shared/utils/fetchWrapper';
 import type { Email } from '../types';
 export type { Email };
 
+export interface SendEmailRequest {
+    to: string;
+    subject: string;
+    body: string;
+    html?: string;
+    recipient?: string; // Backwards compatibility for frontend hook
+    inReplyTo?: string;
+    threadId?: string;
+    vendorId?: string;
+    spaceId?: string;
+}
+
+export interface BulkEmailRequest {
+    recipients: string[];
+    subject: string;
+    body: string;
+}
+
 export const emailService = {
     // Get Gmail inbox from Gmail API
     getGmailInbox: async (pageToken?: string, maxResults: number = 20): Promise<any> => {
@@ -53,20 +71,12 @@ export const emailService = {
     },
 
     // Send email via Gmail API
-    sendViaGmail: async (emailData: {
-        to: string;
-        subject: string;
-        body: string;
-        inReplyTo?: string;
-        threadId?: string;
-        vendorId?: string;
-        spaceId?: string;
-    }): Promise<any> => {
+    sendViaGmail: async (emailData: SendEmailRequest): Promise<any> => {
         // Send body as HTML to ensure it's saved to bodyHtml field
         return await fetchWrapper('POST', '/emails/gmail/send', {
-            to: emailData.to,
+            to: emailData.to || emailData.recipient,
             subject: emailData.subject,
-            html: emailData.body,  // Send as HTML
+            html: emailData.html || emailData.body,  // Send as HTML if avail, else fallback to body
             inReplyTo: emailData.inReplyTo,
             threadId: emailData.threadId,
             vendorId: emailData.vendorId,
@@ -74,8 +84,40 @@ export const emailService = {
         });
     },
 
-    // Check for new replies from Gmail
-    checkForReplies: async (): Promise<{ success: boolean; message: string; data: any[] }> => {
+    // Check for new replies from Gmail (polling)
+    checkForReplies: async (): Promise<{ success: boolean; message: string; count: number; data: any[] }> => {
         return await fetchWrapper('POST', '/emails/check-replies', {});
+    },
+
+    // Alias for checkForReplies to match frontend hook usage
+    checkGmailReplies: async (): Promise<{ success: boolean; message: string; count: number; data: any[] }> => {
+        return await fetchWrapper('POST', '/emails/check-replies', {});
+    },
+
+    // Send single email (SMTP)
+    sendEmail: async (data: SendEmailRequest): Promise<any> => {
+        return await fetchWrapper('POST', '/emails/send', {
+            to: data.to || data.recipient,
+            subject: data.subject,
+            text: data.body,
+            html: data.html
+        });
+    },
+
+    // Send bulk emails (SMTP)
+    sendBulkEmails: async (data: BulkEmailRequest): Promise<any> => {
+        return await fetchWrapper('POST', '/emails/bulk', data);
+    },
+
+    // Get all replies
+    getReplies: async (spaceId?: string): Promise<any> => {
+        const url = spaceId ? `/emails/replies?spaceId=${spaceId}` : '/emails/replies';
+        return await fetchWrapper('GET', url);
+    },
+
+    // Get sent emails
+    getSentEmails: async (spaceId?: string): Promise<any> => {
+        const url = spaceId ? `/emails/sent?spaceId=${spaceId}` : '/emails/sent';
+        return await fetchWrapper('GET', url);
     }
 };
