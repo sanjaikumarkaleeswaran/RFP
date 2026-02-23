@@ -121,8 +121,8 @@ export const batchAnalyzeReplies = async (req: Request, res: Response) => {
 
         console.log(`🔄 Batch analyzing ${unanalyzedEmails.length} vendor replies...`);
 
-        const results = [];
-        const errors = [];
+        const results: Array<{ emailId: unknown; subject: string | undefined; success: boolean; proposalId: unknown }> = [];
+        const errors: Array<{ emailId: unknown; subject: string | undefined; error: string }> = [];
 
         for (const email of unanalyzedEmails) {
             try {
@@ -132,7 +132,7 @@ export const batchAnalyzeReplies = async (req: Request, res: Response) => {
                     emailId: email._id,
                     subject: email.subject,
                     success: true,
-                    proposalId: proposal.id
+                    proposalId: proposal._id
                 });
             } catch (error) {
                 console.error(`   Failed to analyze ${email._id}:`, error);

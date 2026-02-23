@@ -4,7 +4,8 @@
  */
 
 import { HfInference } from '@huggingface/inference';
-import pdfParse from 'pdf-parse';
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const pdfParse = require('pdf-parse') as (buffer: Buffer) => Promise<{ text: string; numpages: number; info: any }>;
 
 const hf = new HfInference(process.env.HUGGINGFACE_API_KEY || '');
 
@@ -94,8 +95,10 @@ export class EnhancedAIService {
     async analyzeImage(imageBuffer: Buffer): Promise<ImageAnalysisResult> {
         try {
             // Primary: Image captioning with BLIP
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const imageBlob = new Blob([imageBuffer as any]);
             const captionResult = await hf.imageToText({
-                data: imageBuffer,
+                data: imageBlob,
                 model: 'Salesforce/blip-image-captioning-large'
             });
 
@@ -106,8 +109,10 @@ export class EnhancedAIService {
 
             // Secondary: Try OCR for text extraction
             try {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const ocrBlob = new Blob([imageBuffer as any]);
                 const ocrResult = await hf.imageToText({
-                    data: imageBuffer,
+                    data: ocrBlob,
                     model: 'microsoft/trocr-base-printed'
                 });
                 result.ocrText = ocrResult.generated_text;

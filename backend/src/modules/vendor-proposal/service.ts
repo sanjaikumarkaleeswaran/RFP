@@ -4,7 +4,8 @@ import { Space } from '../space/model';
 import { Vendor } from '../vendor/model';
 import mongoose from 'mongoose';
 import { HfInference } from '@huggingface/inference';
-import pdfParse from 'pdf-parse';
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const pdfParse = require('pdf-parse') as (buffer: Buffer) => Promise<{ text: string; numpages: number; info: any }>;
 import { google } from 'googleapis';
 
 const hf = new HfInference(process.env.HUGGINGFACE_API_KEY || '');
@@ -244,8 +245,9 @@ Provide a clear, structured summary.`;
     private async analyzeImageWithHF(imageBuffer: Buffer): Promise<string> {
         try {
             // Use Hugging Face image-to-text model
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const result = await hf.imageToText({
-                data: imageBuffer,
+                data: new Blob([imageBuffer as any]),
                 model: 'Salesforce/blip-image-captioning-large'
             });
 
@@ -256,8 +258,9 @@ Provide a clear, structured summary.`;
 
             // Fallback: Try OCR model
             try {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const ocrResult = await hf.imageToText({
-                    data: imageBuffer,
+                    data: new Blob([imageBuffer as any]),
                     model: 'microsoft/trocr-base-printed'
                 });
                 return ocrResult.generated_text || 'No text detected';

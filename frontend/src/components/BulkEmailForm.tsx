@@ -33,8 +33,7 @@ export const BulkEmailForm: React.FC<BulkEmailFormProps> = ({ onSuccess }) => {
             {
                 recipients: recipientList,
                 subject: formData.subject,
-                text: formData.message,
-                html: formData.message.replace(/\n/g, '<br>')
+                body: formData.message,
             },
             {
                 onSuccess: (data) => {
@@ -56,8 +55,8 @@ export const BulkEmailForm: React.FC<BulkEmailFormProps> = ({ onSuccess }) => {
 
     const recipientCount = formData.recipients
         .split(/[,\n]/)
-        .map(email => email.trim())
-        .filter(email => email && email.includes('@')).length;
+        .map((email: string) => email.trim())
+        .filter((email: string) => email && email.includes('@')).length;
 
     return (
         <div className="bg-white rounded-lg shadow p-6">

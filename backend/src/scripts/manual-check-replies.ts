@@ -89,7 +89,7 @@ async function manualCheckAndAnalyze() {
                     try {
                         const proposal = await vendorProposalService.analyzeVendorReply(reply._id.toString());
                         console.log(`   ✅ Analysis complete!`);
-                        console.log(`   Proposal ID: ${proposal.id}`);
+                        console.log(`   Proposal ID: ${proposal._id}`);
                         console.log(`   Score: ${proposal.overallScore}`);
                         console.log(`   Personal Feedback: ${proposal.personalFeedback?.substring(0, 100)}...`);
                         console.log(`   Status: ${proposal.status}`);

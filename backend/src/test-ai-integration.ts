@@ -3,7 +3,7 @@
  * Tests PDF analysis, image analysis, and proposal comparison
  */
 
-import { enhancedAIService } from '../modules/vendor-proposal/ai-service';
+import { enhancedAIService } from './modules/vendor-proposal/ai-service';
 import fs from 'fs';
 import path from 'path';
 
