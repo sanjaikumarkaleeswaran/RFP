@@ -42,6 +42,6 @@ USER_STORIES.md
 /backend/node_modules
 
 
-package-lock.json
-package.json
+# Do NOT ignore root package.json or package-lock.json — needed by Vercel/CI
+# Workspace-level lockfiles are fine to keep tracked too
 .env.example
