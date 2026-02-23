@@ -19,6 +19,7 @@ CREDENTIAL_ROTATION_GUIDE.md
 GIT_CLEANUP_GUIDE.md
 cleanup-git-history.ps1
 *.md
+!README.md
 # API keys and credentials
 *.key
 *.pem
